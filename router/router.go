@@ -37,25 +37,40 @@ type Router struct {
 }
 
 func NewRouter(logger ilog.Logger, container di.Container) *Router {
-	return &Router{
+	r := &Router{
 		mux:    mux.NewRouter(),
 		logger: logger,
 		ctrls:  container.GetControllers(),
 	}
+
+	r.Initialize()
+
+	return r
 }
 
-func Initialize(r *Router) http.Handler {
+func init() {
+	c := di.GetContainer()
+	c.Register(NewRouter)
+}
+
+func (r *Router) Initialize() {
 	routes := LoadYaml()
 	for _, route := range routes {
 		t := reflect.ValueOf(findController(r.ctrls, route.Package+"."+route.Controller))
 		m := t.MethodByName(route.Function)
-		r.mux.HandleFunc(route.Path, m.Interface().(func(http.ResponseWriter, *http.Request))).
+
+		d := Dispatcher{Method: m, Path: route.Path}
+		// m.Interface().(func(http.ResponseWriter, *http.Request))
+		r.mux.HandleFunc(route.Path, d.Dispatch).
 			Methods(route.Methods...).
 			Name(route.Name)
 	}
 
 	r.mux.Use(LogMiddleware(r.logger))
-	return r.mux
+}
+
+func (router *Router) Start() {
+	http.ListenAndServe(":80", router.mux)
 }
 
 func findController(controllers []interface{}, name string) interface{} {

@@ -3,18 +3,13 @@ package controller
 import (
 	"fmt"
 	"net/http"
-	"strconv"
-
-	"github.com/gorilla/mux"
 )
 
 type T struct{}
 
-func (*T) Add(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	a, _ := strconv.Atoi(vars["a"])
-	b, _ := strconv.Atoi(vars["b"])
-	fmt.Fprintf(w, "Result: %d\n", a+b)
+func (*T) Add(r *http.Request, a, b int) string {
+	fmt.Println(r.URL)
+	return fmt.Sprintf("Result: %d\n", a+b)
 }
 
 func NewT() interface{} {

@@ -31,13 +31,17 @@ type container struct {
 	controllers  []interface{}
 }
 
-func NewContainer() Container {
-	c := &container{
+var c *container
+
+func init() {
+	c = &container{
 		digContainer: dig.New(),
 	}
 
-	c.digContainer.Provide(c.ResolveContainer)
+	c.Register(c.ResolveContainer)
+}
 
+func GetContainer() Container {
 	return c
 }
 
