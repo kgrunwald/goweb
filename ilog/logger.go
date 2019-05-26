@@ -14,6 +14,7 @@ type Logger interface {
 }
 
 func NewLogger() Logger {
+	logrus.SetLevel(logrus.DebugLevel)
 	return logrus.WithFields(logrus.Fields{"channel": "app"})
 }
 
