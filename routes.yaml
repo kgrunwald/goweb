@@ -1,4 +1,0 @@
-test_route:
-  path: /add/{a}/{b}
-  methods: [GET]
-  controller: controller.T::Add

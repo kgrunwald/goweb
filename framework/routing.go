@@ -1,9 +1,7 @@
 package framework
 
 import (
-	"io/ioutil"
 	"net/http"
-	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -13,7 +11,6 @@ import (
 	"github.com/kgrunwald/goweb/di"
 	"github.com/kgrunwald/goweb/ilog"
 	"github.com/kgrunwald/goweb/router"
-	"gopkg.in/yaml.v2"
 )
 
 type Routes struct {
@@ -39,7 +36,7 @@ type RouteHandler struct {
 }
 
 type Response interface {
-	Send(ilog.Logger, http.ResponseWriter) error
+	Send(http.ResponseWriter) error
 }
 
 func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +62,7 @@ func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	out := h.Method.Call(in)
 	handler := out[0].Interface().(Response)
-	handler.Send(h.Logger, w)
+	handler.Send(w)
 }
 
 func getArgument(val, argType string) (reflect.Value, error) {
@@ -84,7 +81,7 @@ func getArgument(val, argType string) (reflect.Value, error) {
 }
 
 func Initialize(r *router.Router, logger ilog.Logger, container di.Container) {
-	bindings := LoadYaml()
+	bindings := LoadRouteYaml()
 	ctrls := container.GetControllers()
 	for _, binding := range bindings {
 		t := reflect.ValueOf(findController(ctrls, binding.Package+"."+binding.Controller))
@@ -95,12 +92,9 @@ func Initialize(r *router.Router, logger ilog.Logger, container di.Container) {
 	}
 }
 
-func LoadYaml() []RouteBinding {
-	path := os.Getenv("CONFIG_DIR") + "/routes.yaml"
-	data, _ := ioutil.ReadFile(path)
-
+func LoadRouteYaml() []RouteBinding {
 	routeFile := Routes{}
-	yaml.Unmarshal([]byte(data), &routeFile)
+	LoadYaml("routes.yaml", &routeFile)
 
 	bindings := []RouteBinding{}
 	for routeName, routeDef := range routeFile.Routes {

@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"net/http"
-
-	"github.com/kgrunwald/goweb/ilog"
 )
 
 const HeaderContentType = "Content-Type"
@@ -46,12 +44,12 @@ func (r *Response) WithStatus(status int) *Response {
 	return r
 }
 
-func (r *Response) Send(logger ilog.Logger, w http.ResponseWriter) error {
+func (r *Response) Send(w http.ResponseWriter) error {
 	bodyBytes, err := r.Marshaller(r.Body)
 	if err != nil {
 		bodyBytes, err = r.Marshaller(errorResponse{Error: err.Error()})
 		if err != nil {
-			logger.Error("Error sending response: %s", err.Error())
+			return err
 		}
 		r.StatusCode = http.StatusInternalServerError
 	}
