@@ -2,16 +2,17 @@ package controller
 
 import (
 	"fmt"
-	"net/http"
+
+	"github.com/kgrunwald/goweb/ilog"
 )
 
 type T struct{}
 
-func (*T) Add(r *http.Request, a, b int) string {
-	fmt.Println(r.URL)
+func (*T) Add(a, b int) string {
 	return fmt.Sprintf("Result: %d\n", a+b)
 }
 
-func NewT() interface{} {
+func NewT(logger ilog.Logger) interface{} {
+	logger.Info("Test")
 	return &T{}
 }

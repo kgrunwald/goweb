@@ -60,7 +60,6 @@ func (r *Router) Initialize() {
 		m := t.MethodByName(route.Function)
 
 		d := Dispatcher{Method: m, Path: route.Path}
-		// m.Interface().(func(http.ResponseWriter, *http.Request))
 		r.mux.HandleFunc(route.Path, d.Dispatch).
 			Methods(route.Methods...).
 			Name(route.Name)

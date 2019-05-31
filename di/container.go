@@ -15,6 +15,7 @@ const (
 
 type Container interface {
 	Register(interface{})
+	RegisterName(interface{}, string)
 	RegisterGroup(interface{}, Group)
 	Invoke(interface{})
 	GetControllers() []interface{}
@@ -63,6 +64,13 @@ func (c *container) Register(constructor interface{}) {
 
 func (c *container) RegisterGroup(constructor interface{}, group Group) {
 	err := c.digContainer.Provide(constructor, dig.Group(string(group)))
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (c *container) RegisterName(constructor interface{}, name string) {
+	err := c.digContainer.Provide(constructor, dig.Name(name))
 	if err != nil {
 		log.Fatal(err)
 	}
