@@ -16,5 +16,6 @@ func Start() {
 	}
 
 	c := di.GetContainer()
+	c.Invoke(Initialize)
 	c.Invoke(func(r *router.Router) { r.Start() })
 }

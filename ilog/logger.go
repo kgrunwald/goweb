@@ -1,7 +1,6 @@
 package ilog
 
 import (
-	"github.com/kgrunwald/goweb/di"
 	"github.com/sirupsen/logrus"
 )
 
@@ -13,16 +12,9 @@ type Logger interface {
 	Fatal(...interface{})
 }
 
-func init() {
-	c := di.GetContainer()
-	c.Register(NewLogger("app"))
-	c.RegisterName(NewLogger("router"), "logger.router")
-}
-
-func NewLogger(channel string) func() Logger {
-	return func() Logger {
-		return &logger{Channel: channel}
-	}
+func NewLogger() Logger {
+	logrus.SetLevel(logrus.DebugLevel)
+	return logrus.WithFields(logrus.Fields{"channel": "app"})
 }
 
 type logger struct {
