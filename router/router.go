@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -25,6 +26,10 @@ type Route struct {
 	Methods []string
 }
 
+func (r Route) String() string {
+	return fmt.Sprintf("(%s) %s %s", r.Name, r.Methods, r.Path)
+}
+
 type RouteHandler interface {
 	Handle(w http.ResponseWriter, r *http.Request)
 }
@@ -43,6 +48,10 @@ func (r *Router) Add(route Route, handler RouteHandler) {
 	r.mux.HandleFunc(route.Path, handler.Handle).
 		Methods(route.Methods...).
 		Name(route.Name)
+}
+
+func (r *Router) PathParams(req *http.Request) map[string]string {
+	return mux.Vars(req)
 }
 
 func (r *Router) Start() {

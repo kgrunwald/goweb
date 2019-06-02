@@ -2,87 +2,96 @@ package di
 
 import (
 	"fmt"
-	"log"
-
-	"go.uber.org/dig"
-)
-
-type Group string
-
-const (
-	GroupController Group = "controller"
+	"reflect"
 )
 
 type Container interface {
 	Register(interface{})
-	RegisterName(interface{}, string)
-	RegisterGroup(interface{}, Group)
+	Get(name string) interface{}
+	GetMethod(service, method string) reflect.Value
 	Invoke(interface{})
-	GetControllers() []interface{}
 	Print()
 }
 
-type Controllers struct {
-	dig.In
-	Controllers []interface{} `group:"controller"`
+type ServiceContainer struct {
+	Services     map[string]interface{}
+	Constructors map[string]Constructor
 }
 
-type container struct {
-	digContainer *dig.Container
-	controllers  []interface{}
-}
+type Constructor func(*ServiceContainer) interface{}
 
-var c *container
+var svc *ServiceContainer
 
 func init() {
-	c = &container{
-		digContainer: dig.New(),
+	svc = &ServiceContainer{
+		Services:     make(map[string]interface{}),
+		Constructors: make(map[string]Constructor),
 	}
 
-	c.Register(c.ResolveContainer)
+	// add the container as a service in the container
+	svc.Register(GetContainer)
 }
 
 func GetContainer() Container {
-	return c
+	return svc
 }
 
-func (c *container) ResolveContainer(ctrls Controllers) Container {
-	c.controllers = ctrls.Controllers
-	return c
-}
-
-func (c *container) GetControllers() []interface{} {
-	return c.controllers
-}
-
-func (c *container) Register(constructor interface{}) {
-	err := c.digContainer.Provide(constructor)
-	if err != nil {
-		log.Fatal(err)
+func (c *ServiceContainer) Register(ctor interface{}) {
+	ctorType := reflect.TypeOf(ctor)
+	returnType := ctorType.Out(0)
+	typeName := c.GetTypeName(returnType)
+	c.Constructors[typeName] = func(c *ServiceContainer) interface{} {
+		out := c.Call(ctor)
+		return out[0].Interface()
 	}
 }
 
-func (c *container) RegisterGroup(constructor interface{}, group Group) {
-	err := c.digContainer.Provide(constructor, dig.Group(string(group)))
-	if err != nil {
-		log.Fatal(err)
-	}
+func (c *ServiceContainer) Invoke(f interface{}) {
+	c.Call(f)
 }
 
-func (c *container) RegisterName(constructor interface{}, name string) {
-	err := c.digContainer.Provide(constructor, dig.Name(name))
-	if err != nil {
-		log.Fatal(err)
+func (c *ServiceContainer) Call(f interface{}) []reflect.Value {
+	fType := reflect.TypeOf(f)
+	args := []reflect.Value{}
+	for i := 0; i < fType.NumIn(); i++ {
+		argType := fType.In(i)
+		argName := c.GetTypeName(argType)
+		argValue := c.GetValue(argName).Convert(argType)
+		args = append(args, argValue)
 	}
+
+	return reflect.ValueOf(f).Call(args)
 }
 
-func (c *container) Invoke(function interface{}) {
-	err := c.digContainer.Invoke(function)
-	if err != nil {
-		log.Fatal(err)
+func (c *ServiceContainer) GetTypeName(t reflect.Type) string {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
 	}
+	return t.String()
 }
 
-func (c *container) Print() {
-	fmt.Println(c.digContainer.String())
+func (c *ServiceContainer) Get(name string) interface{} {
+	if _, ok := c.Services[name]; !ok {
+		if ctor, ok := c.Constructors[name]; ok {
+			c.Services[name] = ctor(c)
+		} else {
+			panic("Attempted to get service " + name + " from container, but it does not exist.")
+		}
+	}
+
+	return c.Services[name]
+}
+
+func (c *ServiceContainer) GetMethod(service, method string) reflect.Value {
+	svc := c.Get(service)
+	t := reflect.ValueOf(svc)
+	return t.MethodByName(method)
+}
+
+func (c *ServiceContainer) GetValue(name string) reflect.Value {
+	return reflect.ValueOf(c.Get(name))
+}
+
+func (c *ServiceContainer) Print() {
+	fmt.Println(c)
 }

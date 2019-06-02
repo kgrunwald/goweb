@@ -5,40 +5,36 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
-	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/kgrunwald/goweb/di"
 	"github.com/kgrunwald/goweb/ilog"
 	"github.com/kgrunwald/goweb/router"
 )
 
-type Routes struct {
-	Routes map[string]struct {
-		Path       string
-		Methods    []string
-		Controller string
-	} `yaml:",inline"`
-}
-
+// RouteBinding maps an HTTP route to a controller method to invoke
 type RouteBinding struct {
-	Route      router.Route
-	Controller string
-	Package    string
-	Function   string
-	Vars       []string
+	Binding
+	Route router.Route
+	Vars  []string
 }
 
+// RouteHandler implements the HTTP request handler interface by invoking the method specified in the binding.
 type RouteHandler struct {
 	Method  reflect.Value
+	Router  *router.Router
 	Binding RouteBinding
-	Logger  ilog.Logger
 }
 
+// A Response implementation must encode the HTTP response in the format requested by the caller
 type Response interface {
 	Send(http.ResponseWriter) error
 }
 
+// Handle is invoked on every incoming HTTP request. It builds up the required parameters for the controller method
+// in the `RouteBinding` by inspecting the types of the method arguments. Currently, only the `*http.Request` and primitive
+// types may be included. It assumes that each parameter in the controller method correlates
+// to a path parameter defined in the `routes.yaml` configuration, and that the parameters are defined in the same order.
+// The controller method MUST return an implementation of `Response`.
 func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	in := []reflect.Value{}
 	method := h.Method.Type()
@@ -51,7 +47,7 @@ func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(h.Binding.Vars) > 0 {
-			vars := mux.Vars(r)
+			vars := h.Router.PathParams(r)
 			for idx, v := range h.Binding.Vars {
 				fieldType := h.Method.Type().In(idx + offset).String()
 				val, _ := getArgument(vars[v], fieldType)
@@ -80,26 +76,34 @@ func getArgument(val, argType string) (reflect.Value, error) {
 	return reflect.ValueOf(nil), nil
 }
 
-func Initialize(r *router.Router, logger ilog.Logger, container di.Container) {
-	bindings := LoadRouteYaml()
-	ctrls := container.GetControllers()
+// InitializeRouter loads the configuration for the router and initializes all of the routes.
+func InitializeRouter(r *router.Router, logger ilog.Logger, container di.Container) {
+	bindings := loadRouteYaml()
 	for _, binding := range bindings {
-		t := reflect.ValueOf(findController(ctrls, binding.Package+"."+binding.Controller))
-		m := t.MethodByName(binding.Function)
-
-		handler := &RouteHandler{Method: m, Binding: binding, Logger: logger}
+		logger.WithFields(
+			"binding", binding.Binding,
+			"route", binding.Route).
+			Debug("Adding route")
+		m := container.GetMethod(binding.Service(), binding.Method)
+		handler := &RouteHandler{Method: m, Binding: binding, Router: r}
 		r.Add(binding.Route, handler)
 	}
 }
 
-func LoadRouteYaml() []RouteBinding {
-	routeFile := Routes{}
+type routesDef struct {
+	Routes map[string]struct {
+		Path       string
+		Methods    []string
+		Controller string
+	} `yaml:",inline"`
+}
+
+func loadRouteYaml() []RouteBinding {
+	routeFile := routesDef{}
 	LoadYaml("routes.yaml", &routeFile)
 
 	bindings := []RouteBinding{}
 	for routeName, routeDef := range routeFile.Routes {
-		parts := strings.Split(routeDef.Controller, "::")
-		nameparts := strings.Split(parts[0], ".")
 		route := router.Route{
 			Name:    routeName,
 			Path:    routeDef.Path,
@@ -114,25 +118,12 @@ func LoadRouteYaml() []RouteBinding {
 		}
 
 		binding := RouteBinding{
-			Route:      route,
-			Function:   parts[1],
-			Package:    nameparts[0],
-			Controller: nameparts[1],
-			Vars:       vars,
+			Route:   route,
+			Vars:    vars,
+			Binding: NewBinding(routeDef.Controller),
 		}
 
 		bindings = append(bindings, binding)
 	}
 	return bindings
-}
-
-func findController(controllers []interface{}, name string) interface{} {
-	for _, ctrl := range controllers {
-		controllerType := reflect.TypeOf(ctrl).Elem().String()
-		if controllerType == name {
-			return ctrl
-		}
-	}
-
-	return nil
 }

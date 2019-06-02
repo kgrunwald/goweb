@@ -1,28 +1,29 @@
 package pubsub
 
 import (
-	"time"
+	"reflect"
+
+	"github.com/kgrunwald/goweb/di"
+	"github.com/kgrunwald/goweb/ilog"
 )
 
 type Bus interface {
-	Subscribe(topic string, handler Handler)
-	Dispatch(data Message)
+	Subscribe(interface{})
+	Dispatch(data interface{})
 }
 
-type Message struct {
-	Topic     string
-	Timestamp time.Time
-	Payload   interface{}
+type Queue chan interface{}
+
+func init() {
+	container := di.GetContainer()
+	container.Register(NewBus)
 }
 
-type Queue chan Message
-
-type Handler func(Message)
-
-func NewBus() Bus {
+func NewBus(logger ilog.Logger) Bus {
 	bus := &EventBus{
-		Subscriptions: map[string][]Handler{},
-		Queue: make(Queue),
+		Subscriptions: []interface{}{},
+		Queue:         make(Queue),
+		Logger:        logger,
 	}
 
 	bus.Run()
@@ -30,19 +31,16 @@ func NewBus() Bus {
 }
 
 type EventBus struct {
-	Subscriptions map[string][]Handler
+	Subscriptions []interface{}
 	Queue         Queue
+	Logger        ilog.Logger
 }
 
-func (e *EventBus) Subscribe(topic string, handler Handler) {
-	if _, ok := e.Subscriptions[topic]; !ok {
-		e.Subscriptions[topic] = []Handler{}
-	}
-
-	e.Subscriptions[topic] = append(e.Subscriptions[topic], handler)
+func (e *EventBus) Subscribe(handler interface{}) {
+	e.Subscriptions = append(e.Subscriptions, handler)
 }
 
-func (e *EventBus) Dispatch(message Message) {
+func (e *EventBus) Dispatch(message interface{}) {
 	e.Queue <- message
 }
 
@@ -57,8 +55,20 @@ func (e *EventBus) Run() {
 	}()
 }
 
-func (e *EventBus) Publish(message Message) {
-	for _, handler := range e.Subscriptions[message.Topic] {
-		go handler(message)
+func (e *EventBus) Publish(message interface{}) {
+	msgType := reflect.TypeOf(message)
+	for _, handler := range e.Subscriptions {
+		t := reflect.TypeOf(handler).In(0)
+		if t == msgType {
+			e.Invoke(handler, message)
+		} else if t.Kind() == reflect.Interface && msgType.Implements(t) {
+			e.Invoke(handler, message)
+		}
 	}
+}
+
+func (e *EventBus) Invoke(handler, message interface{}) {
+	handlerVal := reflect.ValueOf(handler)
+	msgVal := reflect.ValueOf(message)
+	go handlerVal.Call([]reflect.Value{msgVal})
 }
