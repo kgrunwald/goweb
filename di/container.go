@@ -42,7 +42,7 @@ func GetContainer() Container {
 }
 
 // Register adds a service to the container. The provided constructor must only take in other services as arguments,
-// and it must return 1 value to be added to the container.
+// and it must return a single value to be added to the container.
 func (c *ServiceContainer) Register(ctor interface{}) {
 	ctorType := reflect.TypeOf(ctor)
 	returnType := ctorType.Out(0)
