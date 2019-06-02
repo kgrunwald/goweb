@@ -27,13 +27,18 @@ type Constructor func(*ServiceContainer) interface{}
 var svc *ServiceContainer
 
 func init() {
-	svc = &ServiceContainer{
+	svc = newServiceContainer()
+}
+
+func newServiceContainer() *ServiceContainer {
+	s := &ServiceContainer{
 		Services:     make(map[string]interface{}),
 		Constructors: make(map[string]Constructor),
 	}
 
 	// Add the container as a service in the container. Meta.
-	svc.Register(GetContainer)
+	s.Register(GetContainer)
+	return s
 }
 
 // GetContainer returns an implementation of a `Container`
