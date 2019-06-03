@@ -20,6 +20,16 @@ func init() {
 }
 
 func NewBus(logger ilog.Logger) Bus {
+	return newEventBus(logger)
+}
+
+type EventBus struct {
+	Subscriptions []interface{}
+	Queue         Queue
+	Logger        ilog.Logger
+}
+
+func newEventBus(logger ilog.Logger) *EventBus {
 	bus := &EventBus{
 		Subscriptions: []interface{}{},
 		Queue:         make(Queue),
@@ -28,12 +38,6 @@ func NewBus(logger ilog.Logger) Bus {
 
 	bus.Run()
 	return bus
-}
-
-type EventBus struct {
-	Subscriptions []interface{}
-	Queue         Queue
-	Logger        ilog.Logger
 }
 
 func (e *EventBus) Subscribe(handler interface{}) {
