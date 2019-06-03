@@ -67,5 +67,5 @@ func (t *TestSuite) TestSubscribeInterface() {
 
 func (t *TestSuite) TestNewBus() {
 	b := NewBus(t.Logger)
-	t.Equal(reflect.TypeOf(&EventBus{}), reflect.TypeOf(b))
+	t.Equal(reflect.TypeOf(&eventBus{}), reflect.TypeOf(b))
 }
