@@ -8,6 +8,7 @@ import (
 
 	"github.com/kgrunwald/goweb/di"
 	"github.com/kgrunwald/goweb/ilog"
+	"github.com/kgrunwald/goweb/rest"
 	"github.com/kgrunwald/goweb/router"
 )
 
@@ -31,7 +32,7 @@ type Response interface {
 }
 
 // Handle is invoked on every incoming HTTP request. It builds up the required parameters for the controller method
-// in the `RouteBinding` by inspecting the types of the method arguments. Currently, only the `*http.Request` and primitive
+// in the `RouteBinding` by inspecting the types of the method arguments. Currently, only primitive
 // types may be included. It assumes that each parameter in the controller method correlates
 // to a path parameter defined in the `routes.yaml` configuration, and that the parameters are defined in the same order.
 // The controller method MUST return an implementation of `Response`.
@@ -39,11 +40,12 @@ func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	in := []reflect.Value{}
 	method := h.Method.Type()
 	numArgs := method.NumIn()
+	ctx := rest.NewContext(r)
 	if numArgs > 0 {
 		offset := 0
-		if method.In(0).String() == "*http.Request" {
+		if method.In(0).String() == "rest.Context" {
 			offset = 1
-			in = append(in, reflect.ValueOf(r))
+			in = append(in, reflect.ValueOf(ctx))
 		}
 
 		if len(h.Binding.Vars) > 0 {
@@ -57,8 +59,11 @@ func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out := h.Method.Call(in)
-	handler := out[0].Interface().(Response)
-	handler.Send(w)
+	res := out[0].Interface().(*rest.Response)
+	bodyBytes, _ := ctx.Marshal(res)
+	w.Header().Set(rest.HeaderContentType, ctx.ContentType())
+	w.WriteHeader(res.StatusCode)
+	w.Write(bodyBytes)
 }
 
 func getArgument(val, argType string) (reflect.Value, error) {

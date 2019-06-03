@@ -1,9 +1,6 @@
 package controller
 
 import (
-	"net/http"
-
-	"github.com/kgrunwald/goweb/framework"
 	"github.com/kgrunwald/goweb/ilog"
 	"github.com/kgrunwald/goweb/pubsub"
 	"github.com/kgrunwald/goweb/rest"
@@ -33,17 +30,17 @@ type AddRequest struct {
 
 const Topic = "test topic const"
 
-func (t *T) Add(r *http.Request, a, b int) framework.Response {
+func (t *T) Add(a, b int) *rest.Response {
 	res := map[string]int{"result": a + b}
 	t.bus.Dispatch(&MessageImpl{"Test Payload"})
-	return rest.NewResponse(r, res)
+	return rest.OK(res)
 }
 
-func (t *T) AddPost(r *http.Request) framework.Response {
+func (t *T) AddPost(ctx rest.Context) *rest.Response {
 	req := AddRequest{}
-	rest.Bind(r, &req)
+	ctx.Bind(&req)
 	res := map[string]int{"result": req.A + req.B}
-	return rest.NewResponse(r, res)
+	return rest.OK(res)
 }
 
 func (t *T) MessageHandler(msg Message) {
