@@ -19,5 +19,5 @@ func Start() {
 	c := di.GetContainer()
 	c.Invoke(InitializeRouter)
 	c.Invoke(InitializePubSub)
-	c.Invoke(func(r *router.Router) { r.Start() })
+	c.Invoke(func(r router.Router) { r.Start(80) })
 }

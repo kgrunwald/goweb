@@ -22,7 +22,7 @@ type RouteBinding struct {
 // RouteHandler implements the HTTP request handler interface by invoking the method specified in the binding.
 type RouteHandler struct {
 	Method  reflect.Value
-	Router  *router.Router
+	Router  router.Router
 	Binding RouteBinding
 }
 
@@ -82,7 +82,7 @@ func getArgument(val, argType string) (reflect.Value, error) {
 }
 
 // InitializeRouter loads the configuration for the router and initializes all of the routes.
-func InitializeRouter(r *router.Router, logger ilog.Logger, container di.Container) {
+func InitializeRouter(r router.Router, logger ilog.Logger, container di.Container) {
 	bindings := loadRouteYaml()
 	for _, binding := range bindings {
 		logger.WithFields(
