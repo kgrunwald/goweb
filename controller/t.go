@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"errors"
+
 	"github.com/kgrunwald/goweb/ctx"
 	"github.com/kgrunwald/goweb/ilog"
 	"github.com/kgrunwald/goweb/pubsub"
@@ -28,12 +30,11 @@ type AddRequest struct {
 	B int `json:"b"`
 }
 
-const Topic = "test topic const"
-
 func (t *T) Add(ctx ctx.Context, a, b int) error {
-	res := map[string]int{"result": a + b}
-	t.bus.Dispatch(&MessageImpl{"Test Payload"})
-	return ctx.OK(res)
+	// res := map[string]int{"result": a + b}
+	// t.bus.Dispatch(&MessageImpl{"Test Payload"})
+	// return ctx.OK(res)
+	return errors.New("Test error message")
 }
 
 func (t *T) AddPost(ctx ctx.Context) error {

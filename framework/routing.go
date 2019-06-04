@@ -24,6 +24,7 @@ type RouteHandler struct {
 	Method  reflect.Value
 	Router  router.Router
 	Binding RouteBinding
+	Log     ilog.Logger
 }
 
 // Handle is invoked on every incoming HTTP request. It builds up the required parameters for the controller method
@@ -36,7 +37,7 @@ func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	method := h.Method.Type()
 	numArgs := method.NumIn()
 
-	context := ctx.New(r, w)
+	context := ctx.New(r, w, h.Log)
 	if numArgs > 0 {
 		in = append(in, reflect.ValueOf(context))
 
@@ -50,7 +51,10 @@ func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.Method.Call(in)
+	err := h.Method.Call(in)[0].Interface()
+	if err != nil {
+		context.SendError(err.(error))
+	}
 }
 
 func getArgument(val, argType string) (reflect.Value, error) {
@@ -77,7 +81,7 @@ func InitializeRouter(r router.Router, logger ilog.Logger, container di.Containe
 			"Route", binding.Route).
 			Debug("Adding route")
 		m := container.GetMethod(binding.Service(), binding.Method)
-		handler := &RouteHandler{Method: m, Binding: binding, Router: r}
+		handler := &RouteHandler{Method: m, Binding: binding, Router: r, Log: logger}
 		r.Add(binding.Route, handler)
 	}
 }

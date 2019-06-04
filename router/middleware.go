@@ -22,9 +22,9 @@ func LogMiddleware(l ilog.Logger) Middleware {
 			l.WithFields(
 				"Duration", duration,
 				"Status", sw.status,
-				"ContentLen", sw.length,
 				"Method", r.Method,
 				"RequestURI", r.RequestURI,
+				"RequestId", sw.Header().Get("RequestID"),
 			).Info("Access log")
 		})
 	}

@@ -3,8 +3,11 @@ package ctx
 import (
 	"encoding/json"
 	"encoding/xml"
+	"io"
 	"net/http"
 
+	"github.com/google/uuid"
+	"github.com/kgrunwald/goweb/ilog"
 	"github.com/kgrunwald/goweb/soap"
 )
 
@@ -24,6 +27,7 @@ const ContentTypeXML = "application/xml"
 type Context interface {
 	// Request returns the underlying HTTP Request for this Context
 	Request() *http.Request
+	RequestID() string
 
 	// Bind reads the body of the HTTP request and deserializes it into the provided interface. The Content-Type header will be used
 	// to determine the encoding of the request to deserialize the body. If no Content-Type header is provided,
@@ -39,12 +43,16 @@ type Context interface {
 	Unauthorized(interface{}) error
 	Forbidden(interface{}) error
 	BadRequest(interface{}) error
+	SendError(error) error
+	Log() ilog.Logger
 }
 
-func New(r *http.Request, w http.ResponseWriter) Context {
+func New(r *http.Request, w http.ResponseWriter, log ilog.Logger) Context {
 	c := &ctx{
-		req:    r,
-		writer: w,
+		req:       r,
+		writer:    w,
+		requestId: uuid.New().String(),
+		log:       log,
 	}
 
 	if c.ContentType() == ContentTypeXML {
@@ -53,7 +61,7 @@ func New(r *http.Request, w http.ResponseWriter) Context {
 			c.encoder = soap.NewEncoder(c.writer)
 		} else {
 			c.decoder = xml.NewDecoder(c.req.Body)
-			c.encoder = xml.NewEncoder(c.writer)
+			c.encoder = &xmlEncoder{w}
 		}
 	} else {
 		c.decoder = json.NewDecoder(c.req.Body)
@@ -71,11 +79,30 @@ type Decoder interface {
 	Decode(interface{}) error
 }
 
+type xmlEncoder struct {
+	Writer io.Writer
+}
+
+func (x *xmlEncoder) Encode(out interface{}) error {
+	if _, err := x.Writer.Write([]byte(xml.Header)); err != nil {
+		return err
+	}
+
+	return xml.NewEncoder(x.Writer).Encode(out)
+}
+
 type ctx struct {
-	req     *http.Request
-	writer  http.ResponseWriter
-	decoder Decoder
-	encoder Encoder
+	req       *http.Request
+	writer    http.ResponseWriter
+	decoder   Decoder
+	encoder   Encoder
+	log       ilog.Logger
+	requestId string
+}
+
+type ErrorMessage struct {
+	XMLName xml.Name `xml:"error" json:"-"`
+	Error   string   `xml:",innerxml" json:"error"`
 }
 
 func (c *ctx) Request() *http.Request {
@@ -96,6 +123,7 @@ func (c *ctx) ContentType() string {
 }
 
 func (c *ctx) Respond(status int, body interface{}) error {
+	c.writer.Header().Set("RequestID", c.RequestID())
 	c.writer.Header().Set("Content-Type", c.ContentType())
 	c.writer.WriteHeader(status)
 	return c.encoder.Encode(body)
@@ -124,4 +152,17 @@ func (c *ctx) Unauthorized(body interface{}) error {
 // BadRequest is a helper method that returns a response with a 400 status code
 func (c *ctx) BadRequest(body interface{}) error {
 	return c.Respond(http.StatusBadRequest, body)
+}
+
+func (c *ctx) SendError(err error) error {
+	c.Log().Error(err.Error())
+	return c.Respond(http.StatusInternalServerError, ErrorMessage{Error: err.Error()})
+}
+
+func (c *ctx) RequestID() string {
+	return c.requestId
+}
+
+func (c *ctx) Log() ilog.Logger {
+	return c.log.WithField("RequestID", c.RequestID())
 }
