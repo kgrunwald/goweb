@@ -1,2 +1,2 @@
 handlers:
-  - controller.T::MessageHandler
+  - controller.T:MessageHandler

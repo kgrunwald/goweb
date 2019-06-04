@@ -17,12 +17,12 @@ func (b Binding) Service() string {
 }
 
 func (b Binding) String() string {
-	return b.Service() + "::" + b.Method
+	return b.Service() + ":" + b.Method
 }
 
-// NewBinding returns a new instance of a Binding given a method definition in of the form <package>.<type>::<method>
+// NewBinding returns a new instance of a Binding given a method definition in of the form <package>.<type>:<method>
 func NewBinding(methodDef string) Binding {
-	parts := strings.Split(methodDef, "::")
+	parts := strings.Split(methodDef, ":")
 	nameparts := strings.Split(parts[0], ".")
 
 	return Binding{

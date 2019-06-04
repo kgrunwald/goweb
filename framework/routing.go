@@ -86,8 +86,8 @@ func InitializeRouter(r router.Router, logger ilog.Logger, container di.Containe
 	bindings := loadRouteYaml()
 	for _, binding := range bindings {
 		logger.WithFields(
-			"binding", binding.Binding,
-			"route", binding.Route).
+			"Binding", binding.Binding,
+			"Route", binding.Route).
 			Debug("Adding route")
 		m := container.GetMethod(binding.Service(), binding.Method)
 		handler := &RouteHandler{Method: m, Binding: binding, Router: r}

@@ -14,8 +14,8 @@ type pubSubDef struct {
 func InitializePubSub(bus pubsub.Bus, container di.Container, logger ilog.Logger) {
 	bindings := loadPubSubYaml()
 	for _, binding := range bindings {
-		logger.WithFields("binding", binding).
-			Debug("Adding PubSub Handler")
+		logger.WithFields("Binding", binding).
+			Debug("Adding PubSub handler")
 		m := container.GetMethod(binding.Service(), binding.Method)
 		bus.Subscribe(m.Interface())
 	}
