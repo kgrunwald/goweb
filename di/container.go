@@ -9,6 +9,7 @@ import (
 type Container interface {
 	Register(interface{})
 	Get(name string) interface{}
+	New(name string) interface{}
 	GetMethod(service, method string) reflect.Value
 	Invoke(interface{})
 	Print()
@@ -89,14 +90,19 @@ func (c *ServiceContainer) GetTypeName(t reflect.Type) string {
 // Get a service from the container by name. If the service is not in the container, the method will panic.
 func (c *ServiceContainer) Get(name string) interface{} {
 	if _, ok := c.Services[name]; !ok {
-		if ctor, ok := c.Constructors[name]; ok {
-			c.Services[name] = ctor(c)
-		} else {
-			panic("Attempted to get service " + name + " from container, but it does not exist.")
-		}
+		c.Services[name] = c.New(name)
 	}
 
 	return c.Services[name]
+}
+
+// New instance of a service from the container by name. If the service is not in the container, the method will panic.
+func (c *ServiceContainer) New(name string) interface{} {
+	if ctor, ok := c.Constructors[name]; ok {
+		return ctor(c)
+	} else {
+		panic("Attempted to get service " + name + " from container, but it does not exist.")
+	}
 }
 
 // GetMethod looks up the service in the container by name and then looks up the method by name on the returned instance.

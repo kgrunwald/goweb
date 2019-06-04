@@ -1,9 +1,9 @@
 package controller
 
 import (
+	"github.com/kgrunwald/goweb/ctx"
 	"github.com/kgrunwald/goweb/ilog"
 	"github.com/kgrunwald/goweb/pubsub"
-	"github.com/kgrunwald/goweb/rest"
 )
 
 type T struct {
@@ -30,17 +30,21 @@ type AddRequest struct {
 
 const Topic = "test topic const"
 
-func (t *T) Add(a, b int) *rest.Response {
+func (t *T) Add(ctx ctx.Context, a, b int) error {
 	res := map[string]int{"result": a + b}
 	t.bus.Dispatch(&MessageImpl{"Test Payload"})
-	return rest.OK(res)
+	return ctx.OK(res)
 }
 
-func (t *T) AddPost(ctx rest.Context) *rest.Response {
+func (t *T) AddPost(ctx ctx.Context) error {
 	req := AddRequest{}
 	ctx.Bind(&req)
 	res := map[string]int{"result": req.A + req.B}
-	return rest.OK(res)
+	return ctx.OK(res)
+}
+
+func (t *T) GetVersion() {
+
 }
 
 func (t *T) MessageHandler(msg Message) {

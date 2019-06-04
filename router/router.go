@@ -34,6 +34,7 @@ type Route struct {
 	Name    string
 	Path    string
 	Methods []string
+	Headers []string
 }
 
 func (r Route) String() string {
@@ -86,9 +87,13 @@ func NewRouter(logger ilog.Logger) Router {
 }
 
 func (r *muxRouter) Add(route Route, handler RouteHandler) {
-	r.mux.HandleFunc(route.Path, handler.Handle).
+	routeDef := r.mux.HandleFunc(route.Path, handler.Handle).
 		Methods(route.Methods...).
 		Name(route.Name)
+
+	if len(route.Headers) > 0 {
+		routeDef.Headers(route.Headers...)
+	}
 }
 
 func (r *muxRouter) Use(fn Middleware) {

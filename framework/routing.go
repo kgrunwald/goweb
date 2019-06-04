@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/kgrunwald/goweb/ctx"
 	"github.com/kgrunwald/goweb/di"
 	"github.com/kgrunwald/goweb/ilog"
-	"github.com/kgrunwald/goweb/rest"
 	"github.com/kgrunwald/goweb/router"
 )
 
@@ -26,11 +26,6 @@ type RouteHandler struct {
 	Binding RouteBinding
 }
 
-// A Response implementation must encode the HTTP response in the format requested by the caller
-type Response interface {
-	Send(http.ResponseWriter) error
-}
-
 // Handle is invoked on every incoming HTTP request. It builds up the required parameters for the controller method
 // in the `RouteBinding` by inspecting the types of the method arguments. Currently, only primitive
 // types may be included. It assumes that each parameter in the controller method correlates
@@ -40,30 +35,22 @@ func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	in := []reflect.Value{}
 	method := h.Method.Type()
 	numArgs := method.NumIn()
-	ctx := rest.NewContext(r)
+
+	context := ctx.New(r, w)
 	if numArgs > 0 {
-		offset := 0
-		if method.In(0).String() == "rest.Context" {
-			offset = 1
-			in = append(in, reflect.ValueOf(ctx))
-		}
+		in = append(in, reflect.ValueOf(context))
 
 		if len(h.Binding.Vars) > 0 {
 			vars := h.Router.PathParams(r)
 			for idx, v := range h.Binding.Vars {
-				fieldType := h.Method.Type().In(idx + offset).String()
+				fieldType := h.Method.Type().In(idx + 1).String()
 				val, _ := getArgument(vars[v], fieldType)
 				in = append(in, val)
 			}
 		}
 	}
 
-	out := h.Method.Call(in)
-	res := out[0].Interface().(*rest.Response)
-	bodyBytes, _ := ctx.Marshal(res)
-	w.Header().Set(rest.HeaderContentType, ctx.ContentType())
-	w.WriteHeader(res.StatusCode)
-	w.Write(bodyBytes)
+	h.Method.Call(in)
 }
 
 func getArgument(val, argType string) (reflect.Value, error) {
@@ -100,6 +87,7 @@ type routesDef struct {
 		Path       string
 		Methods    []string
 		Controller string
+		Headers    map[string]string
 	} `yaml:",inline"`
 }
 
@@ -109,10 +97,16 @@ func loadRouteYaml() []RouteBinding {
 
 	bindings := []RouteBinding{}
 	for routeName, routeDef := range routeFile.Routes {
+		headers := []string{}
+		for key, val := range routeDef.Headers {
+			headers = append(headers, key, val)
+		}
+
 		route := router.Route{
 			Name:    routeName,
 			Path:    routeDef.Path,
 			Methods: routeDef.Methods,
+			Headers: headers,
 		}
 
 		vars := []string{}
