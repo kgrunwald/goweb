@@ -1,7 +1,11 @@
 package ctx
 
 import (
+	"encoding/json"
+	"encoding/xml"
 	"net/http"
+
+	"github.com/kgrunwald/goweb/soap"
 )
 
 // HeaderContentType holds the name of the Content-Type HTTP header
@@ -38,11 +42,25 @@ type Context interface {
 }
 
 func New(r *http.Request, w http.ResponseWriter) Context {
-	if r.Header.Get("SOAPAction") != "" {
-		return newSoapContext(r, w)
+	c := &ctx{
+		req:    r,
+		writer: w,
 	}
 
-	return newRestContext(r, w)
+	if c.ContentType() == ContentTypeXML {
+		if c.req.Header.Get("SOAPAction") != "" {
+			c.decoder = soap.NewDecoder(c.req.Body)
+			c.encoder = soap.NewEncoder(c.writer)
+		} else {
+			c.decoder = xml.NewDecoder(c.req.Body)
+			c.encoder = xml.NewEncoder(c.writer)
+		}
+	} else {
+		c.decoder = json.NewDecoder(c.req.Body)
+		c.encoder = json.NewEncoder(c.writer)
+	}
+
+	return c
 }
 
 type Encoder interface {
@@ -53,37 +71,57 @@ type Decoder interface {
 	Decode(interface{}) error
 }
 
-type responseBuilder struct {
-	Writer  http.ResponseWriter
-	Encoder Encoder
+type ctx struct {
+	req     *http.Request
+	writer  http.ResponseWriter
+	decoder Decoder
+	encoder Encoder
 }
 
-func (b *responseBuilder) Respond(status int, body interface{}) error {
-	b.Writer.WriteHeader(status)
-	return b.Encoder.Encode(body)
+func (c *ctx) Request() *http.Request {
+	return c.req
+}
+
+func (c *ctx) Bind(out interface{}) error {
+	return c.decoder.Decode(out)
+}
+
+func (c *ctx) ContentType() string {
+	accept := c.req.Header.Get("Accept")
+	if accept == ContentTypeXML {
+		return ContentTypeXML
+	}
+
+	return ContentTypeJSON
+}
+
+func (c *ctx) Respond(status int, body interface{}) error {
+	c.writer.Header().Set("Content-Type", c.ContentType())
+	c.writer.WriteHeader(status)
+	return c.encoder.Encode(body)
 }
 
 // OK is a helper method that returns a response with a 200 status code
-func (b *responseBuilder) OK(body interface{}) error {
-	return b.Respond(http.StatusOK, body)
+func (c *ctx) OK(body interface{}) error {
+	return c.Respond(http.StatusOK, body)
 }
 
 // NotFound is a helper method that returns a response with a 404 status code
-func (b *responseBuilder) NotFound(body interface{}) error {
-	return b.Respond(http.StatusNotFound, body)
+func (c *ctx) NotFound(body interface{}) error {
+	return c.Respond(http.StatusNotFound, body)
 }
 
 // Forbidden is a helper method that returns a response with a 403 status code
-func (b *responseBuilder) Forbidden(body interface{}) error {
-	return b.Respond(http.StatusForbidden, body)
+func (c *ctx) Forbidden(body interface{}) error {
+	return c.Respond(http.StatusForbidden, body)
 }
 
 // Unauthorized is a helper method that returns a response with a 401 status code
-func (b *responseBuilder) Unauthorized(body interface{}) error {
-	return b.Respond(http.StatusUnauthorized, body)
+func (c *ctx) Unauthorized(body interface{}) error {
+	return c.Respond(http.StatusUnauthorized, body)
 }
 
 // BadRequest is a helper method that returns a response with a 400 status code
-func (b *responseBuilder) BadRequest(body interface{}) error {
-	return b.Respond(http.StatusBadRequest, body)
+func (c *ctx) BadRequest(body interface{}) error {
+	return c.Respond(http.StatusBadRequest, body)
 }

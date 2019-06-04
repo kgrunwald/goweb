@@ -1,4 +1,4 @@
-package ctx
+package soap
 
 import (
 	"encoding/xml"
