@@ -102,7 +102,11 @@ type ctx struct {
 
 type ErrorMessage struct {
 	XMLName xml.Name `xml:"error" json:"-"`
-	Error   string   `xml:",innerxml" json:"error"`
+	Message string   `xml:",innerxml" json:"error"`
+}
+
+func (e *ErrorMessage) Error() string {
+	return e.Message
 }
 
 func (c *ctx) Request() *http.Request {
@@ -156,7 +160,7 @@ func (c *ctx) BadRequest(body interface{}) error {
 
 func (c *ctx) SendError(err error) error {
 	c.Log().Error(err.Error())
-	return c.Respond(http.StatusInternalServerError, ErrorMessage{Error: err.Error()})
+	return c.Respond(http.StatusInternalServerError, &ErrorMessage{Message: err.Error()})
 }
 
 func (c *ctx) RequestID() string {

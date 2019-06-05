@@ -15,12 +15,27 @@ func NewEncoder(w io.Writer) *Encoder {
 }
 
 func (e *Encoder) Encode(res interface{}) error {
+	if err, ok := res.(error); ok {
+		res = &Fault{
+			Code: FaultCode{Value: FaultCodeReceiver},
+			Reason: FaultReason{
+				[]ReasonText{
+					ReasonText{
+						Text: "Server error",
+						Lang: "en",
+					},
+				},
+			},
+			Detail: err.Error(),
+		}
+	}
+	
+	env := Envelope{}
 	body, err := xml.Marshal(res)
 	if err != nil {
 		return err
 	}
-
-	env := Envelope{Body: Body{body}}
+	env.Body = Body{body}
 	e.Writer.Write([]byte(xml.Header))
 	return xml.NewEncoder(e.Writer).Encode(env)
 }
