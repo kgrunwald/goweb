@@ -51,7 +51,7 @@ func (s *testSuite) TestBindXML() {
 
 	req := httptest.NewRequest("GET", "/", bytes.NewBufferString(`<T><x>5</x></T>`))
 	w := httptest.NewRecorder()
-	req.Header.Add(HeaderAccept, ContentTypeXML)
+	req.Header.Add(HeaderContentType, ContentTypeXML)
 	ctx := New(req, w, l)
 	t := T{}
 	ctx.Bind(&t)
@@ -64,8 +64,8 @@ func (s *testSuite) TestBindSOAP() {
 	}
 
 	req := httptest.NewRequest("GET", "/", bytes.NewBufferString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Envelope xmlns=\"http://www.w3.org/2003/05/soap-envelope\"><Body xmlns=\"http://www.w3.org/2003/05/soap-envelope\"><T><x>7</x></T></Body></Envelope>"))
-	req.Header.Set("SOAPAction", "Action")
-	req.Header.Add(HeaderAccept, ContentTypeXML)
+	req.Header.Add(HeaderContentType, ContentTypeTextXML)
+	req.Header.Set(HeaderSOAPAction, "Test")
 	w := httptest.NewRecorder()
 	ctx := New(req, w, l)
 	t := T{}
@@ -92,7 +92,7 @@ func (s *testSuite) TestMarshalXML() {
 	}
 
 	req := httptest.NewRequest("GET", "/", nil)
-	req.Header.Set("Content-Type", ContentTypeXML)
+	req.Header.Set(HeaderContentType, ContentTypeXML)
 	w := httptest.NewRecorder()
 	req.Header.Add(HeaderAccept, ContentTypeXML)
 	ctx := New(req, w, l)
@@ -107,10 +107,9 @@ func (s *testSuite) TestMarshalSOAP() {
 	}
 
 	req := httptest.NewRequest("GET", "/", nil)
-	req.Header.Set("Content-Type", ContentTypeXML)
-	req.Header.Set("SOAPAction", "Action")
+	req.Header.Set(HeaderContentType, ContentTypeTextXML)
+	req.Header.Set(HeaderSOAPAction, "Test")
 	w := httptest.NewRecorder()
-	req.Header.Add(HeaderAccept, ContentTypeXML)
 	ctx := New(req, w, l)
 	t := T{X: 7}
 	ctx.OK(t)

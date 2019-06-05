@@ -17,11 +17,17 @@ const HeaderContentType = "Content-Type"
 // HeaderAccept holds the name of the Accept HTTP header
 const HeaderAccept = "Accept"
 
+// HeaderSOAPAction defines the SOAPAction HTTP header
+const HeaderSOAPAction = "Soapaction"
+
 // ContentTypeJSON holds the application/json content type value
 const ContentTypeJSON = "application/json"
 
 // ContentTypeXML holds the application/xml content type value
 const ContentTypeXML = "application/xml"
+
+// ContentTypeTextXML is the content type required for SOAP 1.2 messages
+const ContentTypeTextXML = "text/xml"
 
 // Context provides functions to help with the lifecycle of a particular request
 type Context interface {
@@ -36,6 +42,7 @@ type Context interface {
 
 	// ContentType returns the Content-Type of the given request
 	ContentType() string
+	Accept() string
 
 	Respond(int, interface{}) error
 	OK(interface{}) error
@@ -55,18 +62,7 @@ func New(r *http.Request, w http.ResponseWriter, log ilog.Logger) Context {
 		log:       log,
 	}
 
-	if c.ContentType() == ContentTypeXML {
-		if c.req.Header.Get("SOAPAction") != "" {
-			c.decoder = soap.NewDecoder(c.req.Body)
-			c.encoder = soap.NewEncoder(c.writer)
-		} else {
-			c.decoder = xml.NewDecoder(c.req.Body)
-			c.encoder = &xmlEncoder{w}
-		}
-	} else {
-		c.decoder = json.NewDecoder(c.req.Body)
-		c.encoder = json.NewEncoder(c.writer)
-	}
+	c.Initialize()
 
 	return c
 }
@@ -92,12 +88,13 @@ func (x *xmlEncoder) Encode(out interface{}) error {
 }
 
 type ctx struct {
-	req       *http.Request
-	writer    http.ResponseWriter
-	decoder   Decoder
-	encoder   Encoder
-	log       ilog.Logger
-	requestId string
+	req          *http.Request
+	writer       http.ResponseWriter
+	log          ilog.Logger
+	requestId    string
+	responseType string
+	encoder      Encoder
+	decoder      Decoder
 }
 
 type ErrorMessage struct {
@@ -118,17 +115,68 @@ func (c *ctx) Bind(out interface{}) error {
 }
 
 func (c *ctx) ContentType() string {
-	accept := c.req.Header.Get("Accept")
-	if accept == ContentTypeXML {
-		return ContentTypeXML
+	contentType := c.req.Header.Get(HeaderContentType)
+	if contentType != "" {
+		return contentType
 	}
 
 	return ContentTypeJSON
 }
 
+func (c *ctx) Accept() string {
+	accept := c.req.Header.Get(HeaderAccept)
+	if accept != "" {
+		return accept
+	}
+
+	return c.ContentType()
+}
+
+func (c *ctx) IsSOAP() bool {
+	contentType := c.ContentType()
+	return contentType == ContentTypeTextXML && (len(c.req.Header[HeaderSOAPAction]) > 0)
+}
+
+func (c *ctx) IsXML() bool {
+	contentType := c.ContentType()
+	return contentType == ContentTypeTextXML || contentType == ContentTypeXML
+}
+
+func (c *ctx) Initialize() {
+	if c.IsSOAP() {
+		c.encoder = soap.NewEncoder(c.writer)
+		c.decoder = soap.NewDecoder(c.req.Body)
+		c.responseType = ContentTypeTextXML
+		return
+	}
+
+	contentType := c.ContentType()
+	if contentType == ContentTypeXML || contentType == ContentTypeTextXML {
+		c.decoder = xml.NewDecoder(c.req.Body)
+	} else {
+		c.decoder = json.NewDecoder(c.req.Body)
+	}
+
+	accept := c.Accept()
+	if accept == ContentTypeXML || accept == ContentTypeTextXML {
+		c.encoder = &xmlEncoder{c.writer}
+		c.responseType = accept
+		return
+	}
+
+	if accept == "" && c.IsXML() {
+		c.encoder = &xmlEncoder{c.writer}
+		c.responseType = c.ContentType()
+		return
+	}
+
+	c.encoder = json.NewEncoder(c.writer)
+	c.responseType = ContentTypeJSON
+}
+
 func (c *ctx) Respond(status int, body interface{}) error {
 	c.writer.Header().Set("RequestID", c.RequestID())
-	c.writer.Header().Set("Content-Type", c.ContentType())
+	c.writer.Header().Set(HeaderContentType, c.responseType)
 	c.writer.WriteHeader(status)
 	return c.encoder.Encode(body)
 }
