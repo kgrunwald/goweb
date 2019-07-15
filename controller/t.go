@@ -32,7 +32,7 @@ type AddRequest struct {
 
 func (t *T) Add(ctx ctx.Context, a, b int) error {
 	// res := map[string]int{"result": a + b}
-	// t.bus.Dispatch(&MessageImpl{"Test Payload"})
+	t.bus.Dispatch(&MessageImpl{"Test Payload"})
 	// return ctx.OK(res)
 	return errors.New("Test error message")
 }

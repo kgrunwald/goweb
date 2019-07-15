@@ -3,8 +3,11 @@ package router
 import (
 	"fmt"
 	"net/http"
+	"reflect"
+	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/kgrunwald/goweb/ctx"
 	"github.com/kgrunwald/goweb/di"
 	"github.com/kgrunwald/goweb/ilog"
 )
@@ -16,8 +19,8 @@ func init() {
 
 // Router provides a generic interface for different Routing frameworks.
 type Router interface {
-	// Add a route to the router
-	Add(route Route, handler RouteHandler)
+	// Create a new Route object
+	NewRoute() Route
 
 	// PathParams should return any URL parameters from the specified route
 	PathParams(req *http.Request) map[string]string
@@ -30,24 +33,51 @@ type Router interface {
 }
 
 // Route defines a generic route structure
-type Route struct {
-	Name    string
-	Path    string
-	Methods []string
-	Headers []string
+type Route interface {
+	Name(string) Route
+	Path(string) Route
+	GetPath() string
+	Methods(...string) Route
+	Headers(...string) Route
+	Handler(f func(http.ResponseWriter, *http.Request)) Route
 }
 
-func (r Route) String() string {
-	return fmt.Sprintf("(%s) %s %s", r.Name, r.Methods, r.Path)
+type muxRoute struct {
+	route *mux.Route
+}
+
+func (r *muxRoute) Handler(f func(http.ResponseWriter, *http.Request)) Route {
+	r.route.HandlerFunc(f)
+	return r
+}
+
+func (r *muxRoute) Name(name string) Route {
+	r.route.Name(name)
+	return r
+}
+
+func (r *muxRoute) GetPath() string {
+	path, _ := r.route.GetPathTemplate()
+	return path
+}
+
+func (r *muxRoute) Path(path string) Route {
+	r.route.Path(path)
+	return r
+}
+
+func (r *muxRoute) Methods(methods ...string) Route {
+	r.route.Methods(methods...)
+	return r
+}
+
+func (r *muxRoute) Headers(headers ...string) Route {
+	r.route.Headers(headers...)
+	return r
 }
 
 // Middleware is a function that is invoked before the actual route handler
 type Middleware func(next http.Handler) http.Handler
-
-// A RouteHandler is invoked by the Router when a request to the matching Route is received.
-type RouteHandler interface {
-	Handle(w http.ResponseWriter, r *http.Request)
-}
 
 type statusWriter struct {
 	http.ResponseWriter
@@ -86,13 +116,9 @@ func NewRouter(logger ilog.Logger) Router {
 	return r
 }
 
-func (r *muxRouter) Add(route Route, handler RouteHandler) {
-	routeDef := r.mux.HandleFunc(route.Path, handler.Handle).
-		Methods(route.Methods...).
-		Name(route.Name)
-
-	if len(route.Headers) > 0 {
-		routeDef.Headers(route.Headers...)
+func (r *muxRouter) NewRoute() Route {
+	return &muxRoute{
+		route: r.mux.NewRoute(),
 	}
 }
 
@@ -106,4 +132,63 @@ func (r *muxRouter) PathParams(req *http.Request) map[string]string {
 
 func (r *muxRouter) Start(port int) {
 	http.ListenAndServe(fmt.Sprintf(":%d", port), r.mux)
+}
+
+// RouteBinding maps an HTTP route to a controller method to invoke
+type RouteBinding struct {
+	Route Route
+	Vars  []string
+}
+
+// RouteHandler implements the HTTP request handler interface by invoking the method specified in the binding.
+type RouteHandler struct {
+	Method  reflect.Value
+	Router  Router
+	Binding RouteBinding
+	Log     ilog.Logger
+}
+
+// Handle is invoked on every incoming HTTP request. It builds up the required parameters for the controller method
+// in the `RouteBinding` by inspecting the types of the method arguments. Currently, only primitive
+// types may be included. It assumes that each parameter in the controller method correlates
+// to a path parameter defined in the `routes.yaml` configuration, and that the parameters are defined in the same order.
+// The controller method MUST return an implementation of `Response`.
+func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
+	in := []reflect.Value{}
+	method := h.Method.Type()
+	numArgs := method.NumIn()
+
+	context := ctx.New(r, w, h.Log)
+	if numArgs > 0 {
+		in = append(in, reflect.ValueOf(context))
+
+		if len(h.Binding.Vars) > 0 {
+			vars := h.Router.PathParams(r)
+			for idx, v := range h.Binding.Vars {
+				fieldType := h.Method.Type().In(idx + 1).String()
+				val, _ := getArgument(vars[v], fieldType)
+				in = append(in, val)
+			}
+		}
+	}
+
+	err := h.Method.Call(in)[0].Interface()
+	if err != nil {
+		context.SendError(err.(error))
+	}
+}
+
+func getArgument(val, argType string) (reflect.Value, error) {
+	switch argType {
+	case "string":
+		return reflect.ValueOf(val), nil
+	case "int":
+		v, err := strconv.Atoi(val)
+		if err != nil {
+			return reflect.ValueOf(nil), err
+		}
+		return reflect.ValueOf(v), nil
+	}
+
+	return reflect.ValueOf(nil), nil
 }
