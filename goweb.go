@@ -59,6 +59,12 @@ func Route(path string, method interface{}) router.Route {
 	return route
 }
 
+func ServeSPA(pathPrefix, staticPath string) {
+	di.GetContainer().Invoke(func(r router.Router, log ilog.Logger) {
+		r.ServeSPA(pathPrefix, staticPath)
+	})
+}
+
 func Subscribe(method interface{}) {
 	di.GetContainer().Invoke(func(bus pubsub.Bus, logger ilog.Logger) {
 		logger.Debug("Adding PubSub handler")

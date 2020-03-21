@@ -1,12 +1,13 @@
 package ctx
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/kgrunwald/goweb/ilog"
 	"github.com/kgrunwald/goweb/soap"
 )
@@ -58,13 +59,22 @@ func New(r *http.Request, w http.ResponseWriter, log ilog.Logger) Context {
 	c := &ctx{
 		req:       r,
 		writer:    w,
-		requestId: uuid.New().String(),
+		requestId: newUid(log),
 		log:       log,
 	}
 
 	c.Initialize()
 
 	return c
+}
+
+func newUid(log ilog.Logger) string {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		log.WithField("error", err).Fatal("Failed to create new ID")
+	}
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
 type Encoder interface {
