@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strconv"
 
 	"github.com/joho/godotenv"
 	"github.com/kgrunwald/goweb/di"
@@ -28,7 +29,7 @@ type serverInfo struct {
 }
 
 func getServerInfo(log ilog.Logger) *serverInfo {
-	port, err := strconf.Atoi(os.Getenv("PORT"))
+	port, err := strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
 		log.Fatal("Failed to get $PORT environment variable")
 	}
