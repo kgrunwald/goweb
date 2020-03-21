@@ -12,5 +12,7 @@ require (
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/testify v1.2.2
+	github.com/valyala/fasthttp v1.9.0
 	golang.org/x/sys v0.0.0-20190422165155-953cdadca894 // indirect
+	gopkg.in/square/go-jose.v2 v2.4.1
 )

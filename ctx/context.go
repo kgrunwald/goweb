@@ -1,6 +1,7 @@
 package ctx
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"encoding/xml"
@@ -35,6 +36,10 @@ type Context interface {
 	// Request returns the underlying HTTP Request for this Context
 	Request() *http.Request
 	RequestID() string
+	Writer() http.ResponseWriter
+
+	AddValue(interface{}, interface{})
+	GetValue(interface{}) interface{}
 
 	// Bind reads the body of the HTTP request and deserializes it into the provided interface. The Content-Type header will be used
 	// to determine the encoding of the request to deserialize the body. If no Content-Type header is provided,
@@ -227,4 +232,18 @@ func (c *ctx) RequestID() string {
 
 func (c *ctx) Log() ilog.Logger {
 	return c.log.WithField("RequestID", c.RequestID())
+}
+
+func (c *ctx) AddValue(key interface{}, value interface{}) {
+	reqCtx := c.req.Context()
+	newCtx := context.WithValue(reqCtx, key, value)
+	c.req = c.req.WithContext(newCtx)
+}
+
+func (c *ctx) GetValue(key interface{}) interface{} {
+	return c.req.Context().Value(key.(interface{}))
+}
+
+func (c *ctx) Writer() http.ResponseWriter {
+	return c.writer
 }

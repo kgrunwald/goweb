@@ -24,25 +24,29 @@ func init() {
 	})
 }
 
-type serverInfo struct {
-	port int
+type ServerInfo struct {
+	Port int
 }
 
-func getServerInfo(log ilog.Logger) *serverInfo {
+func (s *ServerInfo) String() string {
+	return fmt.Sprintf("localhost:%d", s.Port)
+}
+
+func getServerInfo(log ilog.Logger) *ServerInfo {
 	port, err := strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
 		log.Fatal("Failed to get $PORT environment variable")
 	}
 
-	return &serverInfo{port}
+	return &ServerInfo{port}
 }
 
 // Start initializes all of the dependencies of the framework and starts listening for incoming HTTP requests
 func Start() {
 	c := di.GetContainer()
-	c.Invoke(func(r router.Router, log ilog.Logger, info *serverInfo) {
-		log.Info(fmt.Sprintf("Listening on port %d", info.port))
-		r.Start(info.port)
+	c.Invoke(func(r router.Router, log ilog.Logger, info *ServerInfo) {
+		log.Info(fmt.Sprintf("Listening on port %d", info.Port))
+		r.Start(info.Port)
 	})
 }
 
