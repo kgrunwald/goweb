@@ -2,6 +2,7 @@ package goweb
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"regexp"
 
@@ -14,6 +15,7 @@ import (
 
 func init() {
 	c := di.GetContainer()
+	c.Register(getServerInfo)
 	c.Invoke(func(log ilog.Logger) {
 		if err := godotenv.Load(); err != nil {
 			log.Debug("No .env file found")
@@ -21,12 +23,25 @@ func init() {
 	})
 }
 
+type serverInfo struct {
+	port int
+}
+
+func getServerInfo(log ilog.Logger) *serverInfo {
+	port, err := strconf.Atoi(os.Getenv("PORT"))
+	if err != nil {
+		log.Fatal("Failed to get $PORT environment variable")
+	}
+
+	return &serverInfo{port}
+}
+
 // Start initializes all of the dependencies of the framework and starts listening for incoming HTTP requests
 func Start() {
 	c := di.GetContainer()
-	c.Invoke(func(r router.Router, log ilog.Logger) {
-		log.Info(fmt.Sprintf("Listening on port %d", 80))
-		r.Start(80)
+	c.Invoke(func(r router.Router, log ilog.Logger, info *serverInfo) {
+		log.Info(fmt.Sprintf("Listening on port %d", info.port))
+		r.Start(info.port)
 	})
 }
 
