@@ -39,7 +39,8 @@ func (j *JWTContext) UpdateJWTCookie(ctx ctx.Context) error {
 }
 
 func (j *JWTContext) SetJWTCookie(ctx ctx.Context, claims *jwt.Claims) error {
-	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: j.key}, (&jose.SignerOptions{}).WithType("JWT"))
+	key := []byte(j.key)
+	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: key}, (&jose.SignerOptions{}).WithType("JWT"))
 	if err != nil {
 		return err
 	}
