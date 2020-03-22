@@ -52,6 +52,7 @@ func (j *JWTContext) SetJWTCookie(ctx ctx.Context, claims *jwt.Claims) error {
 	}
 
 	cookie := makeCookie(ctx, raw)
+	j.log.WithField("cookie", cookie).Debug("Setting cookie")
 	http.SetCookie(ctx.Writer(), cookie)
 	return nil
 }
