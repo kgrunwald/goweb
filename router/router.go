@@ -144,7 +144,7 @@ func (r *muxRouter) Route(path string, method interface{}) Route {
 	route.Handler(handler.Handle)
 
 	r.logger.WithFields(
-		"Route", path).
+		"Route", route.GetPath()).
 		Debug("Adding route")
 	return route
 }
