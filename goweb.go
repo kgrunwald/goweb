@@ -3,8 +3,6 @@ package goweb
 import (
 	"fmt"
 	"os"
-	"reflect"
-	"regexp"
 	"strconv"
 
 	"github.com/joho/godotenv"
@@ -53,27 +51,7 @@ func Start() {
 func Route(path string, method interface{}) router.Route {
 	var route router.Route
 	di.GetContainer().Invoke(func(r router.Router, log ilog.Logger) {
-		route = r.NewRoute()
-		route.Path(path)
-
-		m := reflect.ValueOf(method)
-		vars := []string{}
-		re := regexp.MustCompile(`\{([^{}]+)\}`)
-		matches := re.FindAllStringSubmatch(route.GetPath(), -1)
-		for _, match := range matches {
-			vars = append(vars, match[1])
-		}
-
-		binding := router.RouteBinding{
-			Route: route,
-			Vars:  vars,
-		}
-		handler := &router.RouteHandler{Method: m, Binding: binding, Router: r, Log: log}
-		route.Handler(handler.Handle)
-
-		log.WithFields(
-			"Route", path).
-			Debug("Adding route")
+		route = r.Route(path, method)
 	})
 
 	return route

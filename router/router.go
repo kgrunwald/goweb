@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strconv"
 
 	"github.com/gorilla/mux"
@@ -22,7 +23,7 @@ func init() {
 // Router provides a generic interface for different Routing frameworks.
 type Router interface {
 	// Create a new Route object
-	NewRoute() Route
+	Route(path string, method interface{}) Route
 
 	// Return a subrouter for this router
 	Subrouter(path string) Router
@@ -123,10 +124,29 @@ func NewRouter(logger ilog.Logger) Router {
 	return r
 }
 
-func (r *muxRouter) NewRoute() Route {
-	return &muxRoute{
-		route: r.mux.NewRoute(),
+func (r *muxRouter) Route(path string, method interface{}) Route {
+	route := &muxRoute{r.mux.NewRoute()}
+	route.Path(path)
+	
+	m := reflect.ValueOf(method)
+	vars := []string{}
+	re := regexp.MustCompile(`\{([^{}]+)\}`)
+	matches := re.FindAllStringSubmatch(route.GetPath(), -1)
+	for _, match := range matches {
+		vars = append(vars, match[1])
 	}
+
+	binding := RouteBinding{
+		Route: route,
+		Vars:  vars,
+	}
+	handler := &RouteHandler{Method: m, Binding: binding, Router: r, Log: r.logger}
+	route.Handler(handler.Handle)
+
+	r.logger.WithFields(
+		"Route", path).
+		Debug("Adding route")
+	return route
 }
 
 func (r *muxRouter) Subrouter(path string) Router {
