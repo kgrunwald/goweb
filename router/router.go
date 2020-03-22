@@ -35,7 +35,7 @@ type Router interface {
 	PathParams(req *http.Request) map[string]string
 
 	// Use adds a Middleware handler to the chain of middleware
-	Use(fn Middleware)
+	Use(fn Middleware) Router
 
 	// Start listening for incoming connections. This function will block.
 	Start(port int)
