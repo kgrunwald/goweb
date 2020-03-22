@@ -25,9 +25,9 @@ type JWTScheme struct {
 }
 
 func NewJWTContext(log ilog.Logger) *JWTContext {
-	key := os.Getenv("JWT_KEY")
+	key := os.Getenv("JWT_SECRET")
 	if len(key) == 0 {
-		log.Fatal("$JWT_KEY environment variable not found")
+		log.Fatal("$JWT_SECRET environment variable not found")
 	}
 
 	return &JWTContext{key, log}
