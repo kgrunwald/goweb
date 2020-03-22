@@ -14,6 +14,7 @@ import (
 func init() {
 	c := di.GetContainer()
 	c.Register(NewJWTContext)
+	c.Register(NewAPIKeyContext)
 }
 
 type Authenticator interface {
