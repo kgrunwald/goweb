@@ -120,7 +120,7 @@ func (j *JWTScheme) Authenticate(ctx ctx.Context) error {
 	return nil
 }
 
-func (j *JWTScheme) Middlware(next http.Handler) http.Handler {
+func (j *JWTScheme) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		context := ctx.New(r, w, j.log)
 		if err := j.Authenticate(context); err != nil {
