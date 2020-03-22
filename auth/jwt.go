@@ -109,7 +109,7 @@ func (j *JWTScheme) Authenticate(ctx ctx.Context) error {
 	}
 
 	claims := jwt.Claims{}
-	if err := tok.Claims(j.key, &claims); err != nil {
+	if err := tok.Claims([]byte(j.key), &claims); err != nil {
 		log.WithField("error", err).Error("Could not validate signature")
 		return err
 	}
