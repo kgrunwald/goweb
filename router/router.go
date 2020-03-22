@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/apex/log"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/kgrunwald/goweb/ctx"
 	"github.com/kgrunwald/goweb/di"
@@ -32,6 +32,8 @@ type Router interface {
 
 	// Serve an SPA at the url pathPrefix using files stored at staticPath
 	ServeSPA(pathPrefix, staticPath string)
+
+	EnableCORS() Router
 
 	// PathParams should return any URL parameters from the specified route
 	PathParams(req *http.Request) map[string]string
@@ -172,6 +174,11 @@ func (r *muxRouter) ServeSPA(pathPrefix, staticPath string) {
 	r.mux.PathPrefix(pathPrefix).Handler(spa)
 }
 
+func (r *muxRouter) EnableCORS() Router {
+	r.mux.Use(handlers.CORS())
+	return r
+}
+
 func (r *muxRouter) Start(port int) {
 	http.ListenAndServe(fmt.Sprintf(":%d", port), r.mux)
 }
@@ -261,7 +268,7 @@ func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Log.WithField("args", in).Debug("Invoking route handler")
+	context.Log().WithField("args", in).Debug("Invoking route handler")
 	err := h.Method.Call(in)[0].Interface()
 	if err != nil {
 		context.SendError(err.(error))
