@@ -66,6 +66,7 @@ func makeCookie(ctx ctx.Context, token string) *http.Cookie {
 	}
 
 	return &http.Cookie{
+		Name: "goweb_jwt"
 		Path: "/",
 		Domain: domain,
 		Expires: time.Now().Add(30 * 24 * time.Hour),
