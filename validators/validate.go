@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-func ValidateRequiredFields(o interface{}, fields ...string) error {
+func RequiredFields(o interface{}, fields ...string) error {
 	v := reflect.ValueOf(o).Elem()
 	var missing []string
 	for _, field := range fields {
