@@ -1,5 +1,6 @@
 package xml
 // #cgo LDFLAGS: -lxml2
+// #cgo CFLAGS: -I/usr/include/libxml2
 // #include <libxml/tree.h>
 // #include <libxml/xmlmemory.h>
 import "C"
