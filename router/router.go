@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/apex/log"
 	"github.com/gorilla/mux"
 	"github.com/kgrunwald/goweb/ctx"
 	"github.com/kgrunwald/goweb/di"
@@ -255,6 +256,7 @@ func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	log.Log.WithField("args", in).Debug("Invoking route handler")
 	err := h.Method.Call(in)[0].Interface()
 	if err != nil {
 		context.SendError(err.(error))
