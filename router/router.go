@@ -24,6 +24,9 @@ type Router interface {
 	// Create a new Route object
 	NewRoute() Route
 
+	// Return a subrouter for this router
+	Subrouter(path string) Router
+
 	// Serve an SPA at the url pathPrefix using files stored at staticPath
 	ServeSPA(pathPrefix, staticPath string)
 
