@@ -39,7 +39,7 @@ func (a *APIKeyContext) NewAPIKeyScheme() *APIKeyScheme {
 func (a *APIKeyScheme) Authenticate(ctx ctx.Context) error {
 	header := ctx.Request().Header.Get("x-api-key")
 	if header != a.key {
-		return errors.New("API key not valie")
+		return errors.New("API key not valid")
 	}
 
 	ctx.Log().Info("Authenticated API key")

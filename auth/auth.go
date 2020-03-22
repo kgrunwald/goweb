@@ -50,7 +50,7 @@ func HttpsMiddleware(log ilog.Logger, port int) router.Middleware {
 				log.WithFields("host", host, "scheme", headerScheme).Info("Redirecting to HTTPS")
 				r.URL.Scheme = "https"
 				url := r.URL.String()
-				http.Redirect(w, r, url, 301)
+				http.Redirect(w, r, url, http.StatusMovedPermanently)
 				return
 			}
 			next.ServeHTTP(w, r)

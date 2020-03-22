@@ -193,6 +193,9 @@ func (c *ctx) Respond(status int, body interface{}) error {
 	c.writer.Header().Set("RequestID", c.RequestID())
 	c.writer.Header().Set(HeaderContentType, c.responseType)
 	c.writer.WriteHeader(status)
+	if err, ok := body.(error); ok {
+		body = &ErrorMessage{Message: err.Error()}
+	}
 	return c.encoder.Encode(body)
 }
 
