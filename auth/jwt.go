@@ -52,7 +52,7 @@ func (j *JWTContext) SetJWTCookie(ctx ctx.Context, claims *jwt.Claims) error {
 	}
 
 	cookie := makeCookie(ctx, raw)
-	j.log.WithField("cookie", cookie).Debug("Setting cookie")
+	j.log.WithField("cookie", cookie.String()).Debug("Setting cookie")
 	http.SetCookie(ctx.Writer(), cookie)
 	return nil
 }
@@ -65,14 +65,13 @@ func makeCookie(ctx ctx.Context, token string) *http.Cookie {
 		domain = os.Getenv("COOKIE_DOMAIN")
 	}
 
-	cookie := &http.Cookie{
+	return &http.Cookie{
 		Path: "/",
 		Domain: domain,
 		Expires: time.Now().Add(30 * 24 * time.Hour),
 		Value: token,
 		HttpOnly: true,
 	}
-	return cookie
 }
 
 func (j *JWTContext) DeleteJWTCookie(ctx ctx.Context) {
