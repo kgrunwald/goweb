@@ -156,8 +156,9 @@ func (r *muxRouter) Subrouter(path string) Router {
 	}
 }
 
-func (r *muxRouter) Use(fn Middleware) {
+func (r *muxRouter) Use(fn Middleware) Router {
 	r.mux.Use((mux.MiddlewareFunc)(fn))
+	return r
 }
 
 func (r *muxRouter) PathParams(req *http.Request) map[string]string {
