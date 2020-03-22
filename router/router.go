@@ -1,6 +1,7 @@
 package router
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -250,7 +251,11 @@ func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			vars := h.Router.PathParams(r)
 			for idx, v := range h.Binding.Vars {
 				fieldType := h.Method.Type().In(idx + 1).String()
-				val, _ := getArgument(vars[v], fieldType)
+				val, err := getArgument(vars[v], fieldType)
+				if err != nil {
+					context.BadRequest(err)
+					return
+				}
 				in = append(in, val)
 			}
 		}
@@ -268,12 +273,23 @@ func getArgument(val, argType string) (reflect.Value, error) {
 	case "string":
 		return reflect.ValueOf(val), nil
 	case "int":
-		v, err := strconv.Atoi(val)
-		if err != nil {
-			return reflect.ValueOf(nil), err
-		}
-		return reflect.ValueOf(v), nil
+		v, err := getInt(val)
+		return reflect.ValueOf(int(v)), err
+	case "int32":
+		v, err := getInt(val)
+		return reflect.ValueOf(int32(v)), err
+	case "int64":
+		v, err := getInt(val)
+		return reflect.ValueOf(v), err
 	}
 
-	return reflect.ValueOf(nil), nil
+	return reflect.ValueOf(nil), errors.New("Failed to convert argType: " + argType)
+}
+
+func getInt(val string) (int64, error) {
+	v, err := strconv.ParseInt(val, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return v, nil
 }
