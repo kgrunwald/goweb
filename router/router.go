@@ -50,6 +50,7 @@ type Route interface {
 type muxRoute struct {
 	route *mux.Route
 }
+
 func (r *muxRoute) Handler(f func(http.ResponseWriter, *http.Request)) Route {
 	r.route.HandlerFunc(f)
 	return r
@@ -106,7 +107,6 @@ func (w *statusWriter) Write(b []byte) (int, error) {
 type muxRouter struct {
 	mux    *mux.Router
 	logger ilog.Logger
-	ctrls  []interface{}
 }
 
 // NewRouter returns a concrete implementation of the Router interface
@@ -123,6 +123,13 @@ func NewRouter(logger ilog.Logger) Router {
 func (r *muxRouter) NewRoute() Route {
 	return &muxRoute{
 		route: r.mux.NewRoute(),
+	}
+}
+
+func (r *muxRouter) Subrouter(path string) Router {
+	return &muxRouter{
+		mux: r.mux.PathPrefix(path).Subrouter(),
+		logger: r.logger,
 	}
 }
 

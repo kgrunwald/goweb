@@ -13,53 +13,20 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-type JWTScheme struct {
+type JWTContext struct {
 	key string
-	roles []string
 	log ilog.Logger
 }
 
-func (j *JWTScheme) Authenticate(ctx ctx.Context) error {
-	authToken, err := ctx.Request().Cookie("authorization")
-	log := ctx.Log()
-	if err != nil || len(authToken.Value) == 0 {
-		log.Info("No JWT cookie provided")
-		return errors.New("No JWT cookie provided")
-	}
-
-	tok, err := jwt.ParseSigned(string(authToken.Value))
-	if err != nil {
-		log.WithField("error", err).Error("Could not parse JWT")
-		return err
-	}
-
-	claims := jwt.Claims{}
-	if err := tok.Claims(j.key, &claims); err != nil {
-		log.WithField("error", err).Error("Could not validate signature")
-		return err
-	}
-
-	ctx.Log().WithField("claims", claims).Info("Authenticated user")
-	ctx.AddValue(ContextKeyAuthenticated, true)
-	ctx.AddValue(ContextKeyJWTAuthenticated, true)
-	ctx.AddValue(ContextKeyClaims, &claims)
-	ctx.AddValue(ContextKeyUserEmail, claims.Subject)
-	return nil
-}
-
-func (j *JWTScheme ) Middlware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		context := ctx.New(r, w, j.log)
-		if err := j.Authenticate(context); err != nil {
-			context.Forbidden(err)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-type JWTContext struct {
+type JWTScheme struct {
 	key string
+	log ilog.Logger
+	expected jwt.Expected
+}
+
+func NewJWTContext(log ilog.Logger) *JWTContext {
+	key := os.Getenv("JWT_KEY")
+	return &JWTContext{key, log}
 }
 
 func (j *JWTContext) UpdateJWTCookie(ctx ctx.Context) error {
@@ -102,8 +69,64 @@ func makeCookie(ctx ctx.Context, token string) *http.Cookie {
 	return cookie
 }
 
-func DeleteJWTCookie(ctx ctx.Context) {
+func (j *JWTContext) DeleteJWTCookie(ctx ctx.Context) {
 	cookie := makeCookie(ctx, "")
 	cookie.Expires = time.Now()
 	http.SetCookie(ctx.Writer(), cookie)
+}
+
+func (j *JWTContext) NewJWTScheme(issuer, audience string) *JWTScheme {
+	expected := jwt.Expected{
+		Issuer: issuer,
+		Audience: jwt.Audience{audience},
+	}
+	return &JWTScheme{
+		key: j.key,
+		log: j.log,
+		expected: expected,
+	}
+}
+
+func (j *JWTScheme) Authenticate(ctx ctx.Context) error {
+	authToken, err := ctx.Request().Cookie("authorization")
+	log := ctx.Log()
+	if err != nil || len(authToken.Value) == 0 {
+		log.Info("No JWT cookie provided")
+		return errors.New("No JWT cookie provided")
+	}
+
+
+	tok, err := jwt.ParseSigned(string(authToken.Value))
+	if err != nil {
+		log.WithField("error", err).Error("Could not parse JWT")
+		return err
+	}
+
+	claims := jwt.Claims{}
+	if err := tok.Claims(j.key, &claims); err != nil {
+		log.WithField("error", err).Error("Could not validate signature")
+		return err
+	}
+
+	if err := claims.Validate(j.expected); err != nil {
+		log.WithFields("claims", claims, "expected", j.expected).Error("Claims did not match expected")
+	}
+
+	ctx.Log().WithField("claims", claims).Info("Authenticated user")
+	ctx.AddValue(ContextKeyAuthenticated, true)
+	ctx.AddValue(ContextKeyJWTAuthenticated, true)
+	ctx.AddValue(ContextKeyClaims, &claims)
+	ctx.AddValue(ContextKeyUserEmail, claims.Subject)
+	return nil
+}
+
+func (j *JWTScheme) Middlware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		context := ctx.New(r, w, j.log)
+		if err := j.Authenticate(context); err != nil {
+			context.Forbidden(err)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
