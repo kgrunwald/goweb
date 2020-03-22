@@ -11,6 +11,11 @@ import (
 	"github.com/kgrunwald/goweb/router"
 )
 
+func init() {
+	c := di.GetContainer()
+	c.Register(NewJWTContext)
+}
+
 type Authenticator interface {
 	Authenticate(ctx.Context)
 	Middleware(next http.Handler) http.Handler
