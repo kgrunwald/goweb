@@ -180,14 +180,14 @@ func (r *muxRouter) EnableCORS() Router {
 			w.Header().Add("access-control-allow-headers", "Authorization, X-API-Key, Content-Type")
 			w.Header().Add("access-control-allow-credentials", "true");
 
-			if string(ctx.Method()) == "OPTIONS" {
+			if r.Method == "OPTIONS" {
 				w.Header().Add("access-control-allow-methods", "POST, GET, PUT, DELETE, OPTIONS")
 				w.Header().Add("access-control-max-age", "86400")
 				w.WriteHeader(http.StatusOK)
 				return
 			}
 
-			next(w, r)
+			next.ServeHTTP(w, r)
 		})
 	})
 	return r
