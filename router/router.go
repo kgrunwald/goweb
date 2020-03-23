@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/kgrunwald/goweb/ctx"
 	"github.com/kgrunwald/goweb/di"
@@ -177,13 +176,18 @@ func (r *muxRouter) ServeSPA(pathPrefix, staticPath string) {
 func (r *muxRouter) EnableCORS() Router {
 	r.mux.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handlers.CORS(
-				handlers.AllowedOrigins([]string{r.Header.Get("Origin")}),
-				handlers.AllowedHeaders([]string{"Authorization", "X-API-Key", "Content-Type"}),
-				handlers.AllowCredentials(),
-				handlers.AllowedMethods([]string{"POST", "GET", "PUT", "DELETE", "OPTIONS"}),
-				handlers.MaxAge(86400),
-			)(next)
+			w.Header().Add("access-control-allow-origin", r.Header.Get("Origin"))
+			w.Header().Add("access-control-allow-headers", "Authorization, X-API-Key, Content-Type")
+			w.Header().Add("access-control-allow-credentials", "true");
+
+			if string(ctx.Method()) == "OPTIONS" {
+				w.Header().Add("access-control-allow-methods", "POST, GET, PUT, DELETE, OPTIONS")
+				w.Header().Add("access-control-max-age", "86400")
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			next(w, r)
 		})
 	})
 	return r
