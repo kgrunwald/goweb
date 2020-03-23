@@ -175,13 +175,17 @@ func (r *muxRouter) ServeSPA(pathPrefix, staticPath string) {
 }
 
 func (r *muxRouter) EnableCORS(hostnames... string) Router {
-	r.mux.Use(handlers.CORS(
-		handlers.AllowedOrigins(hostnames),
-		handlers.AllowedHeaders([]string{"Authorization", "X-API-Key", "Content-Type"}),
-		handlers.AllowCredentials(),
-		handlers.AllowedMethods([]string{"POST", "GET", "PUT", "DELETE", "OPTIONS"}),
-		handlers.MaxAge(86400),
-	))
+	r.mux.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handlers.CORS(
+				handlers.AllowedOrigins([]string{r.Header.Get("Origin")}),
+				handlers.AllowedHeaders([]string{"Authorization", "X-API-Key", "Content-Type"}),
+				handlers.AllowCredentials(),
+				handlers.AllowedMethods([]string{"POST", "GET", "PUT", "DELETE", "OPTIONS"}),
+				handlers.MaxAge(86400),
+			)(next)
+		})
+	})
 	return r
 }
 
