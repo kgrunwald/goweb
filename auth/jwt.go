@@ -133,6 +133,6 @@ func (j *JWTScheme) Middleware(next http.Handler) http.Handler {
 			context.Forbidden(err)
 			return
 		}
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(context.Writer(), context.Request())
 	})
 }
