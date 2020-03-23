@@ -33,7 +33,7 @@ type Router interface {
 	// Serve an SPA at the url pathPrefix using files stored at staticPath
 	ServeSPA(pathPrefix, staticPath string)
 
-	EnableCORS(hostnames... string) Router
+	EnableCORS() Router
 
 	// PathParams should return any URL parameters from the specified route
 	PathParams(req *http.Request) map[string]string
@@ -174,7 +174,7 @@ func (r *muxRouter) ServeSPA(pathPrefix, staticPath string) {
 	r.mux.PathPrefix(pathPrefix).Handler(spa)
 }
 
-func (r *muxRouter) EnableCORS(hostnames... string) Router {
+func (r *muxRouter) EnableCORS() Router {
 	r.mux.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			handlers.CORS(
