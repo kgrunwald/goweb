@@ -57,19 +57,9 @@ func (j *JWTContext) SetJWTCookie(ctx ctx.Context, claims *jwt.Claims) error {
 }
 
 func makeCookie(ctx ctx.Context, token string) *http.Cookie {
-	// referer := ctx.Request().Header.Get("Referer")
-	// u, _ := url.Parse(referer)
-	// domain := u.Hostname()
-	// if len(domain) == 0 {
-	// 	domain = os.Getenv("COOKIE_DOMAIN")
-	// }
-
-	domain := os.Getenv("COOKIE_DOMAIN")
-
 	return &http.Cookie{
 		Name: "authorization",
 		Path: "/",
-		Domain: domain,
 		Expires: time.Now().Add(30 * 24 * time.Hour),
 		Value: token,
 		HttpOnly: true,
