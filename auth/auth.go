@@ -46,7 +46,7 @@ func HttpsMiddleware(log ilog.Logger, port int) router.Middleware {
 			host := r.Host
 			localhost := fmt.Sprintf("localhost:%d", port)
 			headerScheme := r.Header.Get(HEADER_FORWARDED_PROTO)
-			if host != localhost && headerScheme != "https" && r.TLS == nil {
+			if os.Getenv("ENV") != "local" && host != localhost && headerScheme != "https" && r.TLS == nil {
 				log.WithFields("host", host, "scheme", headerScheme).Info("Redirecting to HTTPS")
 				r.URL.Scheme = "https"
 				url := r.URL.String()
