@@ -63,6 +63,8 @@ func makeCookie(ctx ctx.Context, token string) *http.Cookie {
 		Expires: time.Now().Add(30 * 24 * time.Hour),
 		Value: token,
 		HttpOnly: true,
+		SameSite: http.SameSiteNoneMode,
+		Secure: true,
 	}
 }
 
