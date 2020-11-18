@@ -42,6 +42,8 @@ type Router interface {
 
 	// Start listening for incoming connections. This function will block.
 	Start(port int)
+
+	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
 
 // Route defines a generic route structure
@@ -130,7 +132,7 @@ func NewRouter(logger ilog.Logger) Router {
 func (r *muxRouter) Route(path string, method interface{}) Route {
 	route := &muxRoute{r.mux.NewRoute()}
 	route.Path(path)
-	
+
 	m := reflect.ValueOf(method)
 	vars := []string{}
 	re := regexp.MustCompile(`\{([^{}]+)\}`)
@@ -154,7 +156,7 @@ func (r *muxRouter) Route(path string, method interface{}) Route {
 
 func (r *muxRouter) Subrouter(path string) Router {
 	return &muxRouter{
-		mux: r.mux.PathPrefix(path).Subrouter(),
+		mux:    r.mux.PathPrefix(path).Subrouter(),
 		logger: r.logger,
 	}
 }
@@ -178,7 +180,7 @@ func (r *muxRouter) EnableCORS() Router {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("access-control-allow-origin", r.Header.Get("Origin"))
 			w.Header().Add("access-control-allow-headers", "Authorization, X-API-Key, Content-Type")
-			w.Header().Add("access-control-allow-credentials", "true");
+			w.Header().Add("access-control-allow-credentials", "true")
 
 			if r.Method == "OPTIONS" {
 				w.Header().Add("access-control-allow-methods", "POST, GET, PUT, DELETE, OPTIONS")
@@ -197,6 +199,10 @@ func (r *muxRouter) Start(port int) {
 	http.ListenAndServe(fmt.Sprintf(":%d", port), r.mux)
 }
 
+func (r *muxRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	r.mux.ServeHTTP(w, req)
+}
+
 // spaHandler implements the http.Handler interface, so we can use it
 // to respond to HTTP requests. The path to the static directory and
 // path to the index file within that static directory are used to
@@ -211,32 +217,32 @@ type spaHandler struct {
 // file located at the index path on the SPA handler will be served. This
 // is suitable behavior for serving an SPA (single page application).
 func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    // get the absolute path to prevent directory traversal
+	// get the absolute path to prevent directory traversal
 	path, err := filepath.Abs(r.URL.Path)
 	if err != nil {
-        // if we failed to get the absolute path respond with a 400 bad request
-        // and stop
+		// if we failed to get the absolute path respond with a 400 bad request
+		// and stop
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-    // prepend the path with the path to the static directory
+	// prepend the path with the path to the static directory
 	path = filepath.Join(h.staticPath, path)
 
-    // check whether a file exists at the given path
+	// check whether a file exists at the given path
 	_, err = os.Stat(path)
 	if os.IsNotExist(err) {
 		// file does not exist, serve index.html
 		http.ServeFile(w, r, filepath.Join(h.staticPath, h.indexPath))
 		return
 	} else if err != nil {
-        // if we got an error (that wasn't that the file doesn't exist) stating the
-        // file, return a 500 internal server error and stop
+		// if we got an error (that wasn't that the file doesn't exist) stating the
+		// file, return a 500 internal server error and stop
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-    // otherwise, use http.FileServer to serve the static dir
+	// otherwise, use http.FileServer to serve the static dir
 	http.FileServer(http.Dir(h.staticPath)).ServeHTTP(w, r)
 }
 
