@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: cimg/go
+      - image: cimg/go:1.13
 
     environment:
       TEST_RESULTS: /tmp/test-results
