@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/kgrunwald/goweb/errors"
 	"github.com/kgrunwald/goweb/ilog"
 	"github.com/kgrunwald/goweb/soap"
 )
@@ -35,7 +36,7 @@ const ContentTypeTextXML = "text/xml"
 type Context interface {
 	// Request returns the underlying HTTP Request for this Context
 	Request() *http.Request
-	RequestID() string
+	requestID() string
 	Writer() http.ResponseWriter
 
 	AddValue(interface{}, interface{})
@@ -62,10 +63,10 @@ type Context interface {
 
 func New(r *http.Request, w http.ResponseWriter, log ilog.Logger) Context {
 	c := &ctx{
-		req:       r,
-		writer:    w,
-		requestId: newUid(log),
-		log:       log,
+		req:    r,
+		writer: w,
+		id:     newUID(log),
+		log:    log,
 	}
 
 	c.Initialize()
@@ -73,7 +74,7 @@ func New(r *http.Request, w http.ResponseWriter, log ilog.Logger) Context {
 	return c
 }
 
-func newUid(log ilog.Logger) string {
+func newUID(log ilog.Logger) string {
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -106,7 +107,7 @@ type ctx struct {
 	req          *http.Request
 	writer       http.ResponseWriter
 	log          ilog.Logger
-	requestId    string
+	id           string
 	responseType string
 	encoder      Encoder
 	decoder      Decoder
@@ -190,7 +191,7 @@ func (c *ctx) Initialize() {
 }
 
 func (c *ctx) Respond(status int, body interface{}) error {
-	c.writer.Header().Set("RequestID", c.RequestID())
+	c.writer.Header().Set("requestID", c.requestID())
 	c.writer.Header().Set(HeaderContentType, c.responseType)
 	c.writer.WriteHeader(status)
 	if err, ok := body.(error); ok {
@@ -226,15 +227,26 @@ func (c *ctx) BadRequest(body interface{}) error {
 
 func (c *ctx) SendError(err error) error {
 	c.Log().Error(err.Error())
-	return c.Respond(http.StatusInternalServerError, &ErrorMessage{Message: err.Error()})
+	msg := &ErrorMessage{Message: err.Error()}
+	if _, ok := err.(errors.BadRequestError); ok {
+		return c.BadRequest(msg)
+	} else if _, ok := err.(errors.UnauthorizedError); ok {
+		return c.Unauthorized(msg)
+	} else if _, ok := err.(errors.ForbiddenError); ok {
+		return c.Forbidden(msg)
+	} else if _, ok := err.(errors.NotFoundError); ok {
+		return c.NotFound(msg)
+	}
+
+	return c.Respond(http.StatusInternalServerError, msg)
 }
 
-func (c *ctx) RequestID() string {
-	return c.requestId
+func (c *ctx) requestID() string {
+	return c.id
 }
 
 func (c *ctx) Log() ilog.Logger {
-	return c.log.WithField("RequestID", c.RequestID())
+	return c.log.WithField("requestID", c.requestID())
 }
 
 func (c *ctx) AddValue(key interface{}, value interface{}) {
