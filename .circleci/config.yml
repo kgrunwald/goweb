@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.12
+      - image: cimg/go
 
     environment:
       TEST_RESULTS: /tmp/test-results
@@ -10,7 +10,8 @@ jobs:
     steps:
       - checkout
       - run: mkdir -p $TEST_RESULTS
-      - run: sudo apt-get install libxml2-dev
+      - run: sudo apt update
+      - run sudo apt install libxml2-dev
 
       - restore_cache:
           keys:
