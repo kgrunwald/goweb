@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/kgrunwald/goweb/errors"
+	"github.com/kgrunwald/goweb/apierrors"
 	"github.com/kgrunwald/goweb/ilog"
 	"github.com/kgrunwald/goweb/soap"
 )
@@ -228,13 +228,13 @@ func (c *ctx) BadRequest(body interface{}) error {
 func (c *ctx) SendError(err error) error {
 	c.Log().Error(err.Error())
 	msg := &ErrorMessage{Message: err.Error()}
-	if _, ok := err.(errors.BadRequestError); ok {
+	if _, ok := err.(apierrors.BadRequestError); ok {
 		return c.BadRequest(msg)
-	} else if _, ok := err.(errors.UnauthorizedError); ok {
+	} else if _, ok := err.(apierrors.UnauthorizedError); ok {
 		return c.Unauthorized(msg)
-	} else if _, ok := err.(errors.ForbiddenError); ok {
+	} else if _, ok := err.(apierrors.ForbiddenError); ok {
 		return c.Forbidden(msg)
-	} else if _, ok := err.(errors.NotFoundError); ok {
+	} else if _, ok := err.(apierrors.NotFoundError); ok {
 		return c.NotFound(msg)
 	}
 
