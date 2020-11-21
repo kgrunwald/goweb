@@ -125,7 +125,7 @@ func NewRouter(logger ilog.Logger) Router {
 		logger: logger,
 	}
 
-	r.Use(LogMiddleware(logger))
+	// r.Use(LogMiddleware(logger))
 	return r
 }
 
@@ -288,7 +288,6 @@ func (h *RouteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	context.Log().WithField("args", in).Debug("Invoking route handler")
 	err := h.Method.Call(in)[0].Interface()
 	if err != nil {
 		context.SendError(err.(error))
