@@ -18,8 +18,8 @@ type JWTContext struct {
 }
 
 type JWTScheme struct {
-	key string
-	log ilog.Logger
+	key      string
+	log      ilog.Logger
 	expected jwt.Expected
 }
 
@@ -57,14 +57,16 @@ func (j *JWTContext) SetJWTCookie(ctx ctx.Context, claims *jwt.Claims) error {
 }
 
 func makeCookie(ctx ctx.Context, token string) *http.Cookie {
+	proto := ctx.Request().Header.Get("X-Forwarded-Proto")
+	secure := proto == "https"
 	return &http.Cookie{
-		Name: "authorization",
-		Path: "/",
-		Expires: time.Now().Add(30 * 24 * time.Hour),
-		Value: token,
+		Name:     "authorization",
+		Path:     "/",
+		Expires:  time.Now().Add(30 * 24 * time.Hour),
+		Value:    token,
 		HttpOnly: true,
 		SameSite: http.SameSiteNoneMode,
-		Secure: true,
+		Secure:   secure,
 	}
 }
 
@@ -76,12 +78,12 @@ func (j *JWTContext) DeleteJWTCookie(ctx ctx.Context) {
 
 func (j *JWTContext) NewJWTScheme(issuer, audience string) *JWTScheme {
 	expected := jwt.Expected{
-		Issuer: issuer,
+		Issuer:   issuer,
 		Audience: jwt.Audience{audience},
 	}
 	return &JWTScheme{
-		key: j.key,
-		log: j.log,
+		key:      j.key,
+		log:      j.log,
 		expected: expected,
 	}
 }
@@ -93,7 +95,6 @@ func (j *JWTScheme) Authenticate(ctx ctx.Context) error {
 		log.Info("No JWT cookie provided")
 		return errors.New("No JWT cookie provided")
 	}
-
 
 	tok, err := jwt.ParseSigned(string(authToken.Value))
 	if err != nil {
