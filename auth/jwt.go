@@ -59,13 +59,18 @@ func (j *JWTContext) SetJWTCookie(ctx ctx.Context, claims *jwt.Claims) error {
 func makeCookie(ctx ctx.Context, token string) *http.Cookie {
 	proto := ctx.Request().Header.Get("X-Forwarded-Proto")
 	secure := proto == "https"
+	sameSite := http.SameSiteDefaultMode
+	if secure {
+		sameSite = http.SameSiteNoneMode
+	}
+
 	return &http.Cookie{
 		Name:     "authorization",
 		Path:     "/",
 		Expires:  time.Now().Add(30 * 24 * time.Hour),
 		Value:    token,
 		HttpOnly: true,
-		SameSite: http.SameSiteNoneMode,
+		SameSite: sameSite,
 		Secure:   secure,
 	}
 }
