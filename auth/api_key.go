@@ -9,10 +9,10 @@ import (
 	"github.com/kgrunwald/goweb/ilog"
 )
 
-type APIKeyContext struct{
+type APIKeyContext struct {
 	key string
 	log ilog.Logger
-}	
+}
 
 type APIKeyScheme struct {
 	key string
@@ -39,10 +39,10 @@ func (a *APIKeyContext) NewAPIKeyScheme() *APIKeyScheme {
 func (a *APIKeyScheme) Authenticate(ctx ctx.Context) error {
 	header := ctx.Request().Header.Get("x-api-key")
 	if header != a.key {
+		ctx.Log().Warn("Failed to authenticate API key")
 		return errors.New("API key not valid")
 	}
 
-	ctx.Log().Info("Authenticated API key")
 	ctx.AddValue(ContextKeyAuthenticated, true)
 	ctx.AddValue(ContextKeyApiKeyAuthenticated, true)
 	return nil
