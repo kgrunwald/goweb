@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/gorilla/mux"
 	"github.com/kgrunwald/goweb/ctx"
 	"github.com/kgrunwald/goweb/di"
@@ -114,6 +117,7 @@ func (w *statusWriter) Write(b []byte) (int, error) {
 }
 
 type muxRouter struct {
+	RequestAccessor
 	mux    *mux.Router
 	logger ilog.Logger
 }
@@ -199,8 +203,32 @@ func (r *muxRouter) Start(port int) {
 	http.ListenAndServe(fmt.Sprintf(":%d", port), r.mux)
 }
 
+func (r *muxRouter) StartLambda() {
+	lambda.Start(r.lambdaHandler)
+}
+
 func (r *muxRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.mux.ServeHTTP(w, req)
+}
+
+func (r *muxRouter) lambdaHandler(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	req, err := r.EventToRequestWithContext(ctx, event)
+	if err != nil {
+		return GatewayTimeout(), fmt.Errorf("Could not convert proxy event to request: %v", err)
+	}
+	return r.proxyInternal(req)
+}
+
+func (r *muxRouter) proxyInternal(req *http.Request) (events.APIGatewayProxyResponse, error) {
+	w := NewProxyResponseWriter()
+	r.mux.ServeHTTP(http.ResponseWriter(w), req)
+
+	resp, err := w.GetProxyResponse()
+	if err != nil {
+		return GatewayTimeout(), fmt.Errorf("Error while generating proxy response: %v", err)
+	}
+
+	return resp, nil
 }
 
 // spaHandler implements the http.Handler interface, so we can use it
