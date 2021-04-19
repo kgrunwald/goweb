@@ -46,6 +46,9 @@ type Router interface {
 	// Start listening for incoming connections. This function will block.
 	Start(port int)
 
+	// Start serving requests from AWS Lambda
+	StartLambda()
+
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
 
