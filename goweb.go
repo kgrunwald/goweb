@@ -23,7 +23,8 @@ func init() {
 }
 
 type ServerInfo struct {
-	Port int
+	Port   int
+	Lambda bool
 }
 
 func (s *ServerInfo) String() string {
@@ -32,19 +33,25 @@ func (s *ServerInfo) String() string {
 
 func getServerInfo(log ilog.Logger) *ServerInfo {
 	port, err := strconv.Atoi(os.Getenv("PORT"))
+	lambda := false
 	if err != nil {
-		log.Fatal("Failed to get $PORT environment variable")
+		lambda = true
+		log.Info("No $PORT variable found, assuming AWS Lambda")
 	}
 
-	return &ServerInfo{port}
+	return &ServerInfo{port, lambda}
 }
 
 // Start initializes all of the dependencies of the framework and starts listening for incoming HTTP requests
 func Start() {
 	c := di.GetContainer()
 	c.Invoke(func(r router.Router, log ilog.Logger, info *ServerInfo) {
-		log.Info(fmt.Sprintf("Listening on port %d", info.Port))
-		r.Start(info.Port)
+		if info.Lambda {
+			r.StartLambda()
+		} else {
+			log.Info(fmt.Sprintf("Listening on port %d", info.Port))
+			r.Start(info.Port)
+		}
 	})
 }
 
