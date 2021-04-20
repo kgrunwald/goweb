@@ -154,10 +154,6 @@ func (r *muxRouter) Route(path string, method interface{}) Route {
 	}
 	handler := &RouteHandler{Method: m, Binding: binding, Router: r, Log: r.logger}
 	route.Handler(handler.Handle)
-
-	r.logger.WithFields(
-		"Route", route.GetPath()).
-		Debug("Adding route")
 	return route
 }
 
