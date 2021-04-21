@@ -5,6 +5,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
+	"github.com/apex/log/handlers/json"
 	"github.com/kgrunwald/goweb/di"
 )
 
@@ -20,14 +21,65 @@ type Logger interface {
 	WithFields(values ...interface{}) Logger
 }
 
+var globalLogger = &logger{log.WithFields(log.Fields{})}
+
+func Debug(msg string) {
+	globalLogger.Debug(msg)
+}
+
+func Info(msg string) {
+	globalLogger.Info(msg)
+}
+
+func Warn(msg string) {
+	globalLogger.Warn(msg)
+}
+
+func Error(msg string) {
+	globalLogger.Error(msg)
+}
+
+func Fatal(msg string) {
+	globalLogger.Fatal(msg)
+}
+
+func WithField(key string, value interface{}) Logger {
+	return globalLogger.WithField(key, value)
+}
+
+func WithFields(fields ...interface{}) Logger {
+	return globalLogger.WithFields(fields...)
+}
+
 func init() {
+	if os.Getenv("LOG_CLI") != "" {
+		log.SetHandler(cli.New(os.Stdout))
+	} else {
+		log.SetHandler(json.New(os.Stdout))
+	}
+
+	switch os.Getenv("LOG_LEVEL") {
+	case "FATAL":
+		log.SetLevel(log.FatalLevel)
+		break
+	case "ERROR":
+		log.SetLevel(log.ErrorLevel)
+		break
+	case "WARN":
+		log.SetLevel(log.WarnLevel)
+		break
+	case "DEBUG":
+		log.SetLevel(log.DebugLevel)
+		break
+	default:
+		log.SetLevel(log.InfoLevel)
+	}
+
 	c := di.GetContainer()
 	c.Register(NewLogger)
 }
 
 func NewLogger() Logger {
-	log.SetHandler(cli.New(os.Stdout))
-	log.SetLevel(log.DebugLevel)
 	return &logger{log.WithFields(log.Fields{})}
 }
 
