@@ -1,11 +1,12 @@
 package ilog
 
 import (
+	"encoding/json"
 	"os"
+	"sync"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
-	"github.com/apex/log/handlers/json"
 	"github.com/kgrunwald/goweb/di"
 )
 
@@ -55,11 +56,31 @@ func WithFields(fields ...interface{}) Logger {
 	return globalLogger.WithFields(fields...)
 }
 
+type Handler struct {
+	*json.Encoder
+	mu sync.Mutex
+}
+
+func (h *Handler) HandleLog(e *log.Entry) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	m := map[string]interface{}{
+		"message": e.Message,
+		"level":   e.Level,
+	}
+	for _, f := range e.Fields.Names() {
+		m[f] = e.Fields.Get(f)
+	}
+	return h.Encoder.Encode(m)
+}
+
 func init() {
 	if os.Getenv("LOG_CLI") != "" {
 		log.SetHandler(cli.New(os.Stdout))
 	} else {
-		log.SetHandler(json.New(os.Stdout))
+		log.SetHandler(&Handler{
+			Encoder: json.NewEncoder(os.Stderr),
+		})
 	}
 
 	switch os.Getenv("LOG_LEVEL") {
@@ -112,7 +133,7 @@ func (l *logger) Fatal(msg string) {
 }
 
 func (l *logger) WithError(err error) Logger {
-	return l.WithField("error", err)
+	return &logger{l.log.WithError(err)}
 }
 
 func (l *logger) WithField(key string, value interface{}) Logger {
