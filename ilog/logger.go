@@ -43,6 +43,10 @@ func Fatal(msg string) {
 	globalLogger.Fatal(msg)
 }
 
+func WithError(err error) Logger {
+	return globalLogger.WithError(err)
+}
+
 func WithField(key string, value interface{}) Logger {
 	return globalLogger.WithField(key, value)
 }
@@ -105,6 +109,10 @@ func (l *logger) Error(msg string) {
 
 func (l *logger) Fatal(msg string) {
 	l.log.Fatal(msg)
+}
+
+func (l *logger) WithError(err error) Logger {
+	return l.WithField("error", err)
 }
 
 func (l *logger) WithField(key string, value interface{}) Logger {
